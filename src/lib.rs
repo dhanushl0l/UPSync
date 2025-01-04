@@ -1,10 +1,6 @@
 pub mod state {
     use battery;
-    use std::{fs, io, process::Command, thread, time};
-
-    use ssh2::Session;
-    use std::io::prelude::*;
-    use std::net::TcpStream;
+    use std::{env, fs, io, process, thread, time};
 
     pub struct ClientAction {
         pub command: String,
@@ -33,11 +29,11 @@ pub mod state {
 
     pub fn clinet_communication(clientaction: &ClientAction) -> Result<bool, io::Error> {
         let output = match clientaction.action {
-            true => Command::new("sh")
+            true => process::Command::new("sh")
                 .arg("-c")
                 .arg(&clientaction.command)
                 .output()?,
-            false => Command::new("sh")
+            false => process::Command::new("sh")
                 .arg("-c")
                 .arg(&clientaction.command)
                 .output()?,
@@ -61,8 +57,12 @@ pub mod state {
         }
     }
 
+    // This function is not yet optimized to perform as expected.
+    use ssh2::Session;
+    use std::io::prelude::*;
+    use std::net::TcpStream;
+
     pub fn exigute_ssh(ssh: Ssh) -> Result<(), Box<dyn std::error::Error>> {
-        // this fn is not optimized yet to do what we expect to to,
         let tcp = TcpStream::connect(&ssh.ip)?;
         let mut sess = Session::new().unwrap();
         sess.set_tcp_stream(tcp);
@@ -74,7 +74,7 @@ pub mod state {
         let mut channel = sess.channel_session()?;
         channel.exec(&ssh.command)?;
         let mut s = String::new();
-        channel.read_to_string(&mut s).expect("hell1");
+        channel.read_to_string(&mut s)?;
         println!("{}", s);
         let _ = channel.wait_close();
         println!("{}", channel.exit_status()?);
@@ -82,7 +82,41 @@ pub mod state {
         Ok(())
     }
 
-    pub fn run(command: ClientAction) {
+    pub fn get_config() -> (String, ClientAction) {
+        let option = env::args()
+            .skip(1)
+            .next()
+            .unwrap_or_else(|| "default".to_string());
+
+        let command = ClientAction {
+            command: "ping -c 1 -W 1 127.0.0.1".to_string(),
+            action: true,
+        };
+
+        (option, command)
+    }
+
+    pub fn run(inputs: (String, ClientAction)) {
+        let (input, command) = inputs;
+        match input.as_str() {
+            "setup" => unimplemented!("setup"),
+            "server" => run_server(command),
+            "client" => unimplemented!("gui app"),
+            _ => println!(
+                r#"Smart-UPS: Convert a non-smart UPS into a smart UPS using laptop power state.
+
+Usage: smart-ups <command>
+
+Commands:
+    setup      Initialize the application (e.g., on a laptop).
+    server     Start the power monitoring server.
+    client     Run this on the client to see the demo popup.
+"#
+            ),
+        }
+    }
+
+    pub fn run_server(command: ClientAction) {
         loop {
             match battery_present() {
                 Ok(state) => println!("Battery state: {}", state),
