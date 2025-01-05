@@ -1,11 +1,8 @@
+mod server;
 pub mod state {
+    use crate::server;
     use battery;
-    use std::{env, fs, io, process, thread, time};
-
-    pub struct ClientAction {
-        pub command: String,
-        pub action: bool,
-    }
+    use std::{env, fs, io, process};
 
     pub struct Ssh {
         pub user_name: String,
@@ -14,6 +11,8 @@ pub mod state {
         pub command: String,
     }
 
+    // On my laptop, if the battery is full, it reports "unknown" instead of "full."
+    // As a workaround, run_server() assumes "unknown" means the battery is charging.
     pub fn battery_present() -> Result<battery::State, battery::Error> {
         let manager = battery::Manager::new()?;
 
@@ -27,17 +26,11 @@ pub mod state {
         return Ok(battery.state());
     }
 
-    pub fn clinet_communication(clientaction: &ClientAction) -> Result<bool, io::Error> {
-        let output = match clientaction.action {
-            true => process::Command::new("sh")
-                .arg("-c")
-                .arg(&clientaction.command)
-                .output()?,
-            false => process::Command::new("sh")
-                .arg("-c")
-                .arg(&clientaction.command)
-                .output()?,
-        };
+    pub fn clinet_state() -> Result<bool, io::Error> {
+        let output = process::Command::new("sh")
+            .arg("-c")
+            .arg("ping -c 1 -W 1 192.168.1.106")
+            .output()?;
 
         Ok(output.status.success())
     }
@@ -82,25 +75,17 @@ pub mod state {
         Ok(())
     }
 
-    pub fn get_config() -> (String, ClientAction) {
-        let option = env::args()
+    pub fn get_args() -> String {
+        env::args()
             .skip(1)
             .next()
-            .unwrap_or_else(|| "default".to_string());
-
-        let command = ClientAction {
-            command: "ping -c 1 -W 1 127.0.0.1".to_string(),
-            action: true,
-        };
-
-        (option, command)
+            .unwrap_or_else(|| "default".to_string())
     }
 
-    pub fn run(inputs: (String, ClientAction)) {
-        let (input, command) = inputs;
-        match input.as_str() {
+    pub fn run(inputs: String) {
+        match inputs.as_str() {
             "setup" => unimplemented!("setup"),
-            "server" => run_server(command),
+            "server" => server::run_server(),
             "client" => unimplemented!("gui app"),
             _ => println!(
                 r#"Smart-UPS: Convert a non-smart UPS into a smart UPS using laptop power state.
@@ -113,23 +98,6 @@ Commands:
     client     Run this on the client to see the demo popup.
 "#
             ),
-        }
-    }
-
-    pub fn run_server(command: ClientAction) {
-        loop {
-            match battery_present() {
-                Ok(state) => println!("Battery state: {}", state),
-                Err(e) => eprintln!("Error: {}", e),
-            }
-
-            println!("{}", clinet_communication(&command).unwrap());
-
-            if command.action {
-                let _ = exigute_ssh(read_file_for_testing());
-            }
-
-            thread::sleep(time::Duration::from_secs(1));
         }
     }
 }
