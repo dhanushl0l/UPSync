@@ -1,6 +1,6 @@
 mod server;
 mod setup;
-pub mod state {
+pub mod core {
     use crate::{server, setup};
     use battery;
     use std::{env, fs, io, process};
@@ -102,13 +102,48 @@ pub mod state {
         Ok(input.trim().to_string())
     }
 
+    pub fn get_input(prompt: &str) -> String {
+        println!("{}", prompt);
+        user_input().unwrap()
+    }
+
+    pub fn parse_input(prompt: &str) -> i32 {
+        let input = get_input(prompt);
+        match input.parse::<i32>() {
+            Ok(x) => x,
+            Err(_) => panic!("Invalid input. Please enter a number."),
+        }
+    }
+
+    pub fn get_yes_no_input(prompt: &str) -> bool {
+        println!("{}", prompt);
+        match user_input().unwrap().to_lowercase().as_str() {
+            "y" => true,
+            "n" => false,
+            _ => {
+                println!("Please enter a valid option.");
+                process::exit(1);
+            }
+        }
+    }
+
+    pub fn parse_enum_input(prompt: &str) -> u8 {
+        let input = get_input(prompt);
+        match input.parse::<u8>() {
+            Ok(x) if x >= 1 && x <= 4 => x,
+            _ => {
+                panic!("Invalid input. Please enter a choice between 1 and 4.");
+            }
+        }
+    }
+
     pub fn run(inputs: String) {
         match inputs.as_str() {
             "setup" => setup::server_setup(),
             "server" => server::run_server(),
             "client" => unimplemented!("gui app"),
             _ => println!(
-                r#"Smart-UPS: Convert a non-smart UPS into a smart UPS using laptop power state.
+                r#"Smart-UPS: Convert a non-smart UPS into a smart UPS using laptop power states.
 
 Usage: smart-ups <command>
 
