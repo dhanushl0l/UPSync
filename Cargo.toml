@@ -8,3 +8,5 @@ battery = "*"
 ssh2 = "*"
 log = "*"
 env_logger = "*"
+serde_json = "*"
+serde = { version = "*", features = ["derive"] }

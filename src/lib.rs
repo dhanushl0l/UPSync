@@ -1,6 +1,7 @@
 mod server;
+mod setup;
 pub mod state {
-    use crate::server;
+    use crate::{server, setup};
     use battery;
     use std::{env, fs, io, process};
 
@@ -9,6 +10,19 @@ pub mod state {
         pub ip: String,
         pub key: String,
         pub command: String,
+    }
+
+    // This enum represents the JSON structure
+    use serde::{Deserialize, Serialize};
+    #[derive(Serialize, Deserialize, Debug)]
+    pub enum ClientConfig {
+        Username(String),
+        Key(String),
+        Ip(String),
+        MacAddress(String),
+        Sec(i32),
+        Popup(bool),
+        Default(u8),
     }
 
     // On my laptop, if the battery is full, it reports "unknown" instead of "full."
@@ -82,9 +96,15 @@ pub mod state {
             .unwrap_or_else(|| "default".to_string())
     }
 
+    pub fn user_input() -> Result<String, io::Error> {
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+        Ok(input.trim().to_string())
+    }
+
     pub fn run(inputs: String) {
         match inputs.as_str() {
-            "setup" => unimplemented!("setup"),
+            "setup" => setup::server_setup(),
             "server" => server::run_server(),
             "client" => unimplemented!("gui app"),
             _ => println!(
