@@ -32,7 +32,7 @@ pub mod core {
                 key: ClientConfig::get_input("Enter the key: "),
                 ip: ClientConfig::get_input("Enter the ip of your device: "),
                 mac_address: ClientConfig::get_input("Enter the MacAddress of your device: "),
-                sec: ClientConfig::parse_input("Enter the time (in seconds) after power loss to put the device to sleep: "),
+                sec: ClientConfig::parse_input_i32("Enter the time (in seconds) after power loss to put the device to sleep: "),
                 popup: ClientConfig::get_yes_no_input("Do you want to see the popup when power is out? (y/n): "),
                 default: ClientConfig::parse_enum_input("Default behaviour when power is out.\n1 = Sleep\n2 = Shutdown\n3 = Hybernate\n4 = Do nothing: "),
             }
@@ -43,9 +43,8 @@ pub mod core {
             self::user_input().unwrap()
         }
 
-        fn parse_input(prompt: &str) -> i32 {
-            let input = ClientConfig::get_input(prompt);
-            match input.parse::<i32>() {
+        fn parse_input_i32(prompt: &str) -> i32 {
+            match ClientConfig::get_input(prompt).parse::<i32>() {
                 Ok(x) => x,
                 Err(_) => panic!("Invalid input. Please enter a number."),
             }
@@ -64,8 +63,7 @@ pub mod core {
         }
 
         fn parse_enum_input(prompt: &str) -> u8 {
-            let input = ClientConfig::get_input(prompt);
-            match input.parse::<u8>() {
+            match ClientConfig::get_input(prompt).parse::<u8>() {
                 Ok(x) if x >= 1 && x <= 4 => x,
                 _ => {
                     panic!("Invalid input. Please enter a choice between 1 and 4.");
@@ -92,7 +90,7 @@ pub mod core {
     pub fn clinet_state() -> Result<bool, io::Error> {
         let output = process::Command::new("sh")
             .arg("-c")
-            .arg("ping -c 1 -W 1 192.168.1.106")
+            .arg("ping -c 1 -W 1 192.168.1.69")
             .output()?;
 
         Ok(output.status.success())

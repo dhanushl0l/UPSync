@@ -47,14 +47,17 @@ where
 pub fn state_discharging() {
     if status(core::clinet_state()) {
         info!("power to back on...");
+
         std::thread::sleep(std::time::Duration::from_secs(5));
+
         let battery = match core::battery_present() {
             Ok(state) => state,
             Err(err) => {
-                error!("Error: {}", err);
+                error!("Unable to read battery status: {}", err);
                 return;
             }
         };
+
         match battery {
             battery::State::Discharging => {
                 info!("sending command to clinet");
@@ -78,11 +81,11 @@ pub fn offline() {
         std::thread::sleep(std::time::Duration::from_secs(5));
         match core::clinet_state() {
             Ok(true) => {
-                info!("client is plugged");
+                info!("client is online");
                 break;
             }
             Ok(false) => {
-                debug!("client is disconected")
+                debug!("client is offline")
             }
             Err(e) => {
                 // implement error handling
