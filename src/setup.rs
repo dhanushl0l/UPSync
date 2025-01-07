@@ -22,18 +22,7 @@ fn continue_setup() {
 
 fn gen_json() {
     use core::ClientConfig;
-    let a = vec![
-        ClientConfig::Username(core::get_input("Enter the username of your local device: ")),
-        ClientConfig::Key(core::get_input("Enter the key: ")),
-        ClientConfig::Ip(core::get_input("Enter the ip of your device: ")),
-        ClientConfig::MacAddress(core::get_input("Enter the MacAddress of your device: ")),
-        ClientConfig::Sec(core::parse_input(
-            "Enter the time (in seconds) after power loss to put the device to sleep: ")),
-        ClientConfig::Popup(core::get_yes_no_input(
-            "Do you want to see the popup when power is out? (y/n): ")),
-        ClientConfig::Default(core::parse_enum_input(
-            "Default behaviour when power is out.\n1 = Sleep\n2 = Shutdown\n3 = Hybernate\n4 = Do nothing: ")),
-    ];
+    let a = ClientConfig::new();
 
     let file = File::create("config.json").unwrap();
     to_writer(file, &a).unwrap();

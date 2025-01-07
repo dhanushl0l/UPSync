@@ -15,14 +15,63 @@ pub mod core {
     // This enum represents the JSON structure
     use serde::{Deserialize, Serialize};
     #[derive(Serialize, Deserialize, Debug)]
-    pub enum ClientConfig {
-        Username(String),
-        Key(String),
-        Ip(String),
-        MacAddress(String),
-        Sec(i32),
-        Popup(bool),
-        Default(u8),
+    pub struct ClientConfig {
+        username: String,
+        key: String,
+        ip: String,
+        mac_address: String,
+        sec: i32,
+        popup: bool,
+        default: u8,
+    }
+
+    impl ClientConfig {
+        pub fn new() -> ClientConfig {
+            ClientConfig {
+                username: ClientConfig::get_input("Enter the username of your local device: "),
+                key: ClientConfig::get_input("Enter the key: "),
+                ip: ClientConfig::get_input("Enter the ip of your device: "),
+                mac_address: ClientConfig::get_input("Enter the MacAddress of your device: "),
+                sec: ClientConfig::parse_input("Enter the time (in seconds) after power loss to put the device to sleep: "),
+                popup: ClientConfig::get_yes_no_input("Do you want to see the popup when power is out? (y/n): "),
+                default: ClientConfig::parse_enum_input("Default behaviour when power is out.\n1 = Sleep\n2 = Shutdown\n3 = Hybernate\n4 = Do nothing: "),
+            }
+        }
+
+        fn get_input(prompt: &str) -> String {
+            println!("{}", prompt);
+            self::user_input().unwrap()
+        }
+
+        fn parse_input(prompt: &str) -> i32 {
+            let input = ClientConfig::get_input(prompt);
+            match input.parse::<i32>() {
+                Ok(x) => x,
+                Err(_) => panic!("Invalid input. Please enter a number."),
+            }
+        }
+
+        fn get_yes_no_input(prompt: &str) -> bool {
+            println!("{}", prompt);
+            match self::user_input().unwrap().to_lowercase().as_str() {
+                "y" => true,
+                "n" => false,
+                _ => {
+                    println!("Please enter a valid option.");
+                    process::exit(1);
+                }
+            }
+        }
+
+        fn parse_enum_input(prompt: &str) -> u8 {
+            let input = ClientConfig::get_input(prompt);
+            match input.parse::<u8>() {
+                Ok(x) if x >= 1 && x <= 4 => x,
+                _ => {
+                    panic!("Invalid input. Please enter a choice between 1 and 4.");
+                }
+            }
+        }
     }
 
     // On my laptop, if the battery is full, it reports "unknown" instead of "full."
@@ -100,41 +149,6 @@ pub mod core {
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
         Ok(input.trim().to_string())
-    }
-
-    pub fn get_input(prompt: &str) -> String {
-        println!("{}", prompt);
-        user_input().unwrap()
-    }
-
-    pub fn parse_input(prompt: &str) -> i32 {
-        let input = get_input(prompt);
-        match input.parse::<i32>() {
-            Ok(x) => x,
-            Err(_) => panic!("Invalid input. Please enter a number."),
-        }
-    }
-
-    pub fn get_yes_no_input(prompt: &str) -> bool {
-        println!("{}", prompt);
-        match user_input().unwrap().to_lowercase().as_str() {
-            "y" => true,
-            "n" => false,
-            _ => {
-                println!("Please enter a valid option.");
-                process::exit(1);
-            }
-        }
-    }
-
-    pub fn parse_enum_input(prompt: &str) -> u8 {
-        let input = get_input(prompt);
-        match input.parse::<u8>() {
-            Ok(x) if x >= 1 && x <= 4 => x,
-            _ => {
-                panic!("Invalid input. Please enter a choice between 1 and 4.");
-            }
-        }
     }
 
     pub fn run(inputs: String) {
