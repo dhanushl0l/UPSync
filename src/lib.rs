@@ -28,47 +28,106 @@ pub mod core {
     impl ClientConfig {
         pub fn new() -> ClientConfig {
             ClientConfig {
-                username: ClientConfig::get_input("Enter the username of your local device: "),
-                key: ClientConfig::get_input("Enter the key: "),
-                ip: ClientConfig::get_input("Enter the ip of your device: "),
-                mac_address: ClientConfig::get_input("Enter the MacAddress of your device: "),
-                sec: ClientConfig::parse_input_i32("Enter the time (in seconds) after power loss to put the device to sleep: "),
-                popup: ClientConfig::get_yes_no_input("Do you want to see the popup when power is out? (y/n): "),
-                default: ClientConfig::parse_enum_input("Default behaviour when power is out.\n1 = Sleep\n2 = Shutdown\n3 = Hybernate\n4 = Do nothing: "),
+                username: ClientConfig::parse_input_string("Enter the username of your local device: "),
+                key: ClientConfig::parse_input_string("Enter the key: "),
+                ip: ClientConfig::parse_input_string("Enter the ip of your device: "),
+                mac_address: ClientConfig::parse_input_string("Enter the MacAddress of your device: "),
+                sec: ClientConfig::parse_input_i32("Enter the time (in seconds) after power loss to put the device to sleep: \nDefault: 30"),
+                popup: ClientConfig::get_yes_no_input("Do you want to see the popup when power is out? (y/n): \nDefault: y"),
+                default: ClientConfig::parse_input_u8("Default behaviour when power is out.\n1 = Sleep\n2 = Shutdown\n3 = Hybernate\n4 = Do nothing \nDefault: 1"),
             }
         }
 
         fn get_input(prompt: &str) -> String {
             println!("{}", prompt);
-            self::user_input().unwrap()
+            self::user_input().expect("Failed to read input")
+        }
+
+        fn parse_input_string(prompt: &str) -> String {
+            let mut attempts = 0;
+
+            while attempts < 3 {
+                let input = ClientConfig::get_input(prompt);
+
+                if input.is_empty() {
+                    eprintln!("Invalid input.");
+                    attempts += 1;
+                    continue;
+                }
+                return input;
+            }
+
+            println!("Exceeded maximum attempts.");
+            std::process::exit(1);
         }
 
         fn parse_input_i32(prompt: &str) -> i32 {
-            match ClientConfig::get_input(prompt).parse::<i32>() {
-                Ok(x) => x,
-                Err(_) => panic!("Invalid input. Please enter a number."),
+            let mut attempts = 0;
+
+            while attempts < 3 {
+                let input = ClientConfig::get_input(prompt);
+
+                if input.is_empty() {
+                    return 30;
+                }
+
+                match input.parse::<i32>() {
+                    Ok(x) => return x,
+                    Err(_) => {
+                        eprintln!(
+                            "Invalid input. Please enter a valid number of seconds as an integer."
+                        );
+                        attempts += 1;
+                    }
+                }
             }
+
+            println!("Exceeded maximum attempts. Exiting or using default value.");
+            std::process::exit(1);
         }
 
         fn get_yes_no_input(prompt: &str) -> bool {
-            println!("{}", prompt);
-            match self::user_input().unwrap().to_lowercase().as_str() {
-                "y" => true,
-                "n" => false,
-                _ => {
-                    println!("Please enter a valid option.");
-                    process::exit(1);
+            let mut attempts = 0;
+
+            while attempts < 3 {
+                println!("{}", prompt);
+                let input = self::user_input().unwrap_or_default().trim().to_lowercase();
+                match input.as_str() {
+                    // Default to "yes" if the user presses Enter
+                    "" => return true,
+                    "y" => return true,
+                    "n" => return false,
+                    _ => {
+                        eprintln!("Invalid input. Please enter 'y' for yes or 'n' for no.");
+                        attempts += 1;
+                    }
                 }
             }
+
+            println!("Exceeded maximum attempts.");
+            std::process::exit(1);
         }
 
-        fn parse_enum_input(prompt: &str) -> u8 {
-            match ClientConfig::get_input(prompt).parse::<u8>() {
-                Ok(x) if x >= 1 && x <= 4 => x,
-                _ => {
-                    panic!("Invalid input. Please enter a choice between 1 and 4.");
+        fn parse_input_u8(prompt: &str) -> u8 {
+            let mut attempts = 0;
+
+            while attempts < 3 {
+                let input = ClientConfig::get_input(prompt);
+
+                if input.is_empty() {
+                    return 1;
+                }
+
+                match input.parse::<u8>() {
+                    Ok(x) if x >= 1 && x <= 4 => return x,
+                    _ => {
+                        eprintln!("Invalid input. Please enter a choice between 1 and 4.");
+                        attempts += 1;
+                    }
                 }
             }
+            println!("Exceeded maximum attempts.");
+            std::process::exit(1);
         }
     }
 
@@ -141,6 +200,16 @@ pub mod core {
             .skip(1)
             .next()
             .unwrap_or_else(|| "default".to_string())
+    }
+
+    pub fn read_json() -> Result<ClientConfig, Box<dyn std::error::Error>> {
+        let path = "config.json";
+
+        let data = fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))?;
+        let json: ClientConfig =
+            serde_json::from_str(&data).map_err(|e| format!("Failed to parse JSON: {}", e))?;
+
+        Ok(json)
     }
 
     pub fn user_input() -> Result<String, io::Error> {

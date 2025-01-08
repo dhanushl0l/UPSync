@@ -1,8 +1,22 @@
 use crate::core;
 use log::{debug, error, info, trace, warn};
-use std::{thread, time};
+use std::{process, thread, time};
+
+const APPNAME: &str = "smart-ups";
 
 pub fn run_server() {
+    let config = core::read_json();
+    let data: core::ClientConfig = match config {
+        Ok(data) => data,
+        Err(err) => {
+            eprintln!(
+                "{} \nPlease run the setup command: `{} setup`.",
+                err, APPNAME
+            );
+            process::exit(1);
+        }
+    };
+
     if let false = status(core::clinet_state()) {
         offline();
     }
