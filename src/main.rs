@@ -1,7 +1,10 @@
-use env_logger;
+use env_logger::{Builder, Env};
 use smart_ups::core;
+
 fn main() {
-    env_logger::init();
+    let env = Env::default().filter_or("LOG", "info");
+    Builder::from_env(env).init();
+
     // Everything in here is temporary for debugging and testing.
     core::run(core::get_args());
 }

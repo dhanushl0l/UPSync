@@ -22,8 +22,8 @@ fn continue_setup() {
 
 fn gen_json() {
     use core::ClientConfig;
-    let a = ClientConfig::new();
+    let config = ClientConfig::new();
 
     let file = File::create("config.json").unwrap();
-    to_writer(file, &a).unwrap();
+    to_writer(file, &config).unwrap();
 }

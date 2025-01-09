@@ -1,28 +1,30 @@
+mod gui;
 mod server;
 mod setup;
 pub mod core {
-    use crate::{server, setup};
+    use crate::{gui, server, setup};
     use battery;
     use std::{env, fs, io, process};
-
-    pub struct Ssh {
-        pub user_name: String,
-        pub ip: String,
-        pub key: String,
-        pub command: String,
-    }
 
     // This enum represents the JSON structure
     use serde::{Deserialize, Serialize};
     #[derive(Serialize, Deserialize, Debug)]
     pub struct ClientConfig {
-        username: String,
-        key: String,
-        ip: String,
-        mac_address: String,
-        sec: i32,
-        popup: bool,
-        default: u8,
+        pub username: String,
+        pub key: String,
+        pub ip: String,
+        pub mac_address: String,
+        pub sec: u64,
+        pub popup: bool,
+        pub default_behaviour: u8,
+    }
+
+    pub enum ClientAction {
+        Sleep,
+        Shutdown,
+        Hybernate,
+        Custom,
+        Demo,
     }
 
     impl ClientConfig {
@@ -32,9 +34,9 @@ pub mod core {
                 key: ClientConfig::parse_input_string("Enter the key: "),
                 ip: ClientConfig::parse_input_string("Enter the ip of your device: "),
                 mac_address: ClientConfig::parse_input_string("Enter the MacAddress of your device: "),
-                sec: ClientConfig::parse_input_i32("Enter the time (in seconds) after power loss to put the device to sleep: \nDefault: 30"),
+                sec: ClientConfig::parse_input_u64("Enter the time (in seconds) after power loss to put the device to sleep: \nDefault: 30"),
                 popup: ClientConfig::get_yes_no_input("Do you want to see the popup when power is out? (y/n): \nDefault: y"),
-                default: ClientConfig::parse_input_u8("Default behaviour when power is out.\n1 = Sleep\n2 = Shutdown\n3 = Hybernate\n4 = Do nothing \nDefault: 1"),
+                default_behaviour: ClientConfig::parse_input_u8("Default behaviour when power is out.\n1 = Sleep\n2 = Shutdown\n3 = Hybernate\n4 = Do nothing \nDefault: 1"),
             }
         }
 
@@ -61,8 +63,8 @@ pub mod core {
             std::process::exit(1);
         }
 
-        fn parse_input_i32(prompt: &str) -> i32 {
-            let mut attempts = 0;
+        fn parse_input_u64(prompt: &str) -> u64 {
+            let mut attempts: u64 = 0;
 
             while attempts < 3 {
                 let input = ClientConfig::get_input(prompt);
@@ -71,7 +73,7 @@ pub mod core {
                     return 30;
                 }
 
-                match input.parse::<i32>() {
+                match input.parse::<u64>() {
                     Ok(x) => return x,
                     Err(_) => {
                         eprintln!(
@@ -146,28 +148,14 @@ pub mod core {
         return Ok(battery.state());
     }
 
-    pub fn clinet_state() -> Result<bool, io::Error> {
+    pub fn client_state(config: &ClientConfig) -> Result<bool, io::Error> {
+        let command = format!("ping -c 1 -W 1 {}", config.ip);
         let output = process::Command::new("sh")
             .arg("-c")
-            .arg("ping -c 1 -W 1 192.168.1.69")
+            .arg(command)
             .output()?;
 
         Ok(output.status.success())
-    }
-
-    pub fn read_file_for_testing() -> Ssh {
-        let ssh = fs::read_to_string("ssh.txt").expect("unable to read");
-        let mut ssh_vec: Vec<&str> = Vec::new();
-        for data in ssh.lines() {
-            ssh_vec.push(data);
-        }
-
-        Ssh {
-            user_name: ssh_vec[0].to_string(),
-            ip: ssh_vec[1].to_string(),
-            key: ssh_vec[2].to_string(),
-            command: ssh_vec[3].to_string(),
-        }
     }
 
     // This function is not yet optimized to perform as expected.
@@ -175,25 +163,39 @@ pub mod core {
     use std::io::prelude::*;
     use std::net::TcpStream;
 
-    pub fn exigute_ssh(ssh: Ssh) -> Result<(), Box<dyn std::error::Error>> {
-        let tcp = TcpStream::connect(&ssh.ip)?;
+    pub fn exigute_ssh(data: &ClientConfig) -> Result<String, Box<dyn std::error::Error>> {
+        let ip = format!("{}:22", data.ip);
+        let tcp = TcpStream::connect(&ip)?;
         let mut sess = Session::new().unwrap();
         sess.set_tcp_stream(tcp);
         sess.handshake().unwrap();
 
-        sess.userauth_password(&ssh.user_name, &ssh.key)?;
+        sess.userauth_password(&data.username, &data.key)?;
         assert!(sess.authenticated());
 
         let mut channel = sess.channel_session()?;
-        channel.exec(&ssh.command)?;
+        let command = format!("{}", data.default_behaviour);
+        channel.exec(&command)?;
         let mut s = String::new();
         channel.read_to_string(&mut s)?;
         println!("{}", s);
-        let _ = channel.wait_close();
+        let _ = channel.wait_close()?;
         println!("{}", channel.exit_status()?);
 
-        Ok(())
+        Ok(s)
     }
+
+    // fn put_to(default: u8) -> String {
+    //     match default {
+    //         1 => "systemctl suspend".to_string(),
+    //         2 => "systemctl hibernate".to_string(),
+    //         3 => "systemctl poweroff".to_string(),
+    //         _ => {
+    //             log::error!("Warning: The configuration contains incorrect values. \nRun 'smart_psu setup' to recreate the config. \nSending device to sleep.");
+    //             "systemctl suspend".to_string()
+    //         }
+    //     }
+    // }
 
     pub fn get_args() -> String {
         env::args()
@@ -222,9 +224,10 @@ pub mod core {
         match inputs.as_str() {
             "setup" => setup::server_setup(),
             "server" => server::run_server(),
-            "client" => unimplemented!("gui app"),
-            _ => println!(
-                r#"Smart-UPS: Convert a non-smart UPS into a smart UPS using laptop power states.
+            "client" => gui::client_ui(ClientAction::Demo),
+            _ => {
+                println!(
+                    r#"Smart-UPS: Convert a non-smart UPS into a smart UPS using laptop power states.
 
 Usage: smart-ups <command>
 
@@ -233,7 +236,8 @@ Commands:
     server     Start the power monitoring server.
     client     Run this on the client to see the demo popup.
 "#
-            ),
+                )
+            }
         }
     }
 }

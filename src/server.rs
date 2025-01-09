@@ -5,8 +5,8 @@ use std::{process, thread, time};
 const APPNAME: &str = "smart-ups";
 
 pub fn run_server() {
-    let config = core::read_json();
-    let data: core::ClientConfig = match config {
+    // read data from json
+    let config: core::ClientConfig = match core::read_json() {
         Ok(data) => data,
         Err(err) => {
             eprintln!(
@@ -17,9 +17,10 @@ pub fn run_server() {
         }
     };
 
-    if let false = status(core::clinet_state()) {
-        offline();
+    if let false = status(core::client_state(&config)) {
+        offline(&config);
     }
+
     loop {
         trace!("Main loop!");
         thread::sleep(time::Duration::from_secs(1));
@@ -27,14 +28,16 @@ pub fn run_server() {
             Ok(state) => state,
             Err(err) => {
                 error!("Error: {}", err);
-                return;
+                continue;
             }
         };
 
         match battery {
             battery::State::Discharging => {
                 warn!("device is discharging.");
-                state_discharging();
+                // Wait for 30 seconds before sending the popup to the client
+                thread::sleep(time::Duration::from_secs(5));
+                state_discharging(&config);
                 continue;
             }
             _ => {
@@ -58,11 +61,11 @@ where
     }
 }
 
-pub fn state_discharging() {
-    if status(core::clinet_state()) {
-        info!("power to back on...");
+fn state_discharging(config: &core::ClientConfig) {
+    if status(core::client_state(config)) {
+        info!("client is online");
 
-        std::thread::sleep(std::time::Duration::from_secs(5));
+        std::thread::sleep(std::time::Duration::from_secs(config.sec));
 
         let battery = match core::battery_present() {
             Ok(state) => state,
@@ -74,26 +77,28 @@ pub fn state_discharging() {
 
         match battery {
             battery::State::Discharging => {
-                info!("sending command to clinet");
-                let ssh_state = core::exigute_ssh(core::read_file_for_testing());
-                ssh_state.unwrap_or_else(|e| {
+                info!("sending command to client");
+                let ssh_state = core::exigute_ssh(config);
+                let output = ssh_state.unwrap_or_else(|e| {
                     error!("Error during SSH execution: {}", e);
-                })
+                    e.to_string()
+                });
+                info!("{}", output);
             }
             _ => {
                 info!("power is back.");
             }
         }
     } else {
-        offline();
+        offline(config);
     }
 }
 
-pub fn offline() {
+fn offline(config: &core::ClientConfig) {
     loop {
         trace!("Ofline state loop");
         std::thread::sleep(std::time::Duration::from_secs(5));
-        match core::clinet_state() {
+        match core::client_state(config) {
             Ok(true) => {
                 info!("client is online");
                 break;
@@ -103,7 +108,7 @@ pub fn offline() {
             }
             Err(e) => {
                 // implement error handling
-                warn!("Unable to read the clinet state: {}", e);
+                warn!("Unable to read the client state: {}", e);
             }
         }
     }
