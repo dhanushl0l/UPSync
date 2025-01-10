@@ -2,7 +2,7 @@ mod gui;
 mod server;
 mod setup;
 pub mod core {
-    use crate::{gui, server, setup};
+    use crate::{server, setup};
     use battery;
     use std::{env, fs, io, process};
 
@@ -224,7 +224,6 @@ pub mod core {
         match inputs.as_str() {
             "setup" => setup::server_setup(),
             "server" => server::run_server(),
-            "client" => gui::client_ui(ClientAction::Demo),
             _ => {
                 println!(
                     r#"Smart-UPS: Convert a non-smart UPS into a smart UPS using laptop power states.
