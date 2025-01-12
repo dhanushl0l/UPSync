@@ -1,4 +1,3 @@
-mod gui;
 mod server;
 mod setup;
 pub mod core {

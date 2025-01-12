@@ -1,6 +1,6 @@
 use env_logger::{Builder, Env};
 use std::env;
-use UPSync::core;
+use upsync::core;
 mod gui;
 
 fn main() {
