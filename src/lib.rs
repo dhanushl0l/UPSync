@@ -184,18 +184,6 @@ pub mod core {
         Ok(s)
     }
 
-    // fn put_to(default: u8) -> String {
-    //     match default {
-    //         1 => "systemctl suspend".to_string(),
-    //         2 => "systemctl hibernate".to_string(),
-    //         3 => "systemctl poweroff".to_string(),
-    //         _ => {
-    //             log::error!("Warning: The configuration contains incorrect values. \nRun 'smart_psu setup' to recreate the config. \nSending device to sleep.");
-    //             "systemctl suspend".to_string()
-    //         }
-    //     }
-    // }
-
     pub fn get_args() -> String {
         env::args()
             .skip(1)

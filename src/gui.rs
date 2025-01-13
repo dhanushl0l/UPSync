@@ -1,5 +1,8 @@
 use gtk::prelude::*;
 use gtk::{self, glib, Application, ApplicationWindow, Button, Orientation};
+use std::io;
+use std::process::{Command, Output};
+use std::rc::Rc;
 
 const APP_ID: &str = "com.dhanu.upsync";
 
@@ -56,7 +59,49 @@ fn popup(app: &Application) {
         .child(&center_container)
         .build();
 
-    // window.fullscreen();
+    let app = Rc::new(app.clone());
+    button_exit.connect_clicked({
+        let app = Rc::clone(&app);
+        move |_| close_app(&app, "exit")
+    });
 
-    window.present();
+    button_hibernate.connect_clicked({
+        let app = Rc::clone(&app);
+        move |_| close_app(&app, "hibernate")
+    });
+
+    button_sleep.connect_clicked({
+        let app = Rc::clone(&app);
+        move |_| close_app(&app, "sleep")
+    });
+
+    button_shutdown.connect_clicked({
+        let app = Rc::clone(&app);
+        move |_| close_app(&app, "shutdown")
+    });
+
+    window.present()
+}
+
+pub fn close_app(app: &Rc<gtk::Application>, action: &str) {
+    println!("{action}");
+    let a = match action {
+        "exit" => put_to(action),
+        "hibernate" => put_to(action),
+        "sleep" => put_to(action),
+        "shutdown" => put_to(action),
+        _ => put_to(action),
+    };
+
+    match a {
+        Ok(result) => println!("{:?}", result),
+        Err(err) => println!("{}", err),
+    }
+
+    app.quit();
+}
+
+fn put_to(action: &str) -> Result<Output, io::Error> {
+    let output = Command::new("sh").arg("-c").arg(action).output()?;
+    Ok(output)
 }
