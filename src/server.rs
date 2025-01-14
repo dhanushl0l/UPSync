@@ -84,6 +84,7 @@ fn state_discharging(config: &core::ClientConfig) {
                     e.to_string()
                 });
                 info!("{}", output);
+                parse_user_input(output);
             }
             _ => {
                 info!("power is back.");
@@ -91,6 +92,42 @@ fn state_discharging(config: &core::ClientConfig) {
         }
     } else {
         offline(config);
+    }
+}
+
+fn parse_user_input(output: String) {
+    let output = output.split_whitespace().next().unwrap_or("");
+    match output {
+        "ignore" => {
+            info!("user ignored power state");
+            wait_for_power();
+        }
+        _ => error!("error"),
+    }
+}
+
+fn wait_for_power() {
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(5));
+
+        let battery = match core::battery_present() {
+            Ok(state) => state,
+            Err(err) => {
+                error!("Error: {}", err);
+                continue;
+            }
+        };
+
+        match battery {
+            battery::State::Discharging => {
+                warn!("device is discharging.");
+                continue;
+            }
+            _ => {
+                info!("device is charging and power is back");
+                break;
+            }
+        }
     }
 }
 

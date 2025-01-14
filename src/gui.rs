@@ -18,14 +18,17 @@ fn popup(app: &Application) {
     let button_sleep = Button::builder().label("Sleep").build();
     let button_hibernate = Button::builder().label("Hibernate").build();
     let button_shutdown = Button::builder().label("Shutdown").build();
-    let button_exit = Button::builder().label("Exit").focus_on_click(true).build();
+    let button_ignore = Button::builder()
+        .label("ignore")
+        .focus_on_click(true)
+        .build();
 
     let button_width = 120;
     let button_height = 30;
     button_sleep.set_size_request(button_width, button_height);
     button_hibernate.set_size_request(button_width, button_height);
     button_shutdown.set_size_request(button_width, button_height);
-    button_exit.set_size_request(button_width, button_height);
+    button_ignore.set_size_request(button_width, button_height);
 
     let gtk_box = gtk::Box::builder()
         .orientation(Orientation::Horizontal)
@@ -41,7 +44,7 @@ fn popup(app: &Application) {
     gtk_box.append(&button_sleep);
     gtk_box.append(&button_hibernate);
     gtk_box.append(&button_shutdown);
-    gtk_box.append(&button_exit);
+    gtk_box.append(&button_ignore);
 
     let center_container = gtk::Box::builder()
         .orientation(Orientation::Vertical)
@@ -60,9 +63,9 @@ fn popup(app: &Application) {
         .build();
 
     let app = Rc::new(app.clone());
-    button_exit.connect_clicked({
+    button_ignore.connect_clicked({
         let app = Rc::clone(&app);
-        move |_| close_app(&app, "exit")
+        move |_| close_app(&app, "ignore")
     });
 
     button_hibernate.connect_clicked({
@@ -86,7 +89,7 @@ fn popup(app: &Application) {
 pub fn close_app(app: &Rc<gtk::Application>, action: &str) {
     println!("{action}");
     let a = match action {
-        "exit" => put_to(action),
+        "ignore" => put_to(action),
         "hibernate" => put_to(action),
         "sleep" => put_to(action),
         "shutdown" => put_to(action),

@@ -173,13 +173,20 @@ pub mod core {
         assert!(sess.authenticated());
 
         let mut channel = sess.channel_session()?;
-        let command = format!("{}", data.default_behaviour);
+        // let command = format!(
+        //     // Need to implement automatic session and display identifier.
+        //     "export WAYLAND_DISPLAY=wayland-1 && export CLIENT=yes && upsync {}",
+        //     data.default_behaviour
+        // );
+        let command = format!(
+            // Need to implement automatic session and display identifier.
+            "export WAYLAND_DISPLAY=wayland-1 && export CLIENT=yes && upsync"
+        );
         channel.exec(&command)?;
         let mut s = String::new();
         channel.read_to_string(&mut s)?;
-        println!("{}", s);
         let _ = channel.wait_close()?;
-        println!("{}", channel.exit_status()?);
+        // println!("{}", channel.exit_status()?);
 
         Ok(s)
     }
