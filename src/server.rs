@@ -1,24 +1,25 @@
 use crate::core;
 use log::{debug, error, info, trace, warn};
+use std::sync::OnceLock;
 use std::{process, thread, time};
 
 const APPNAME: &str = "smart-ups";
+static CONFIG: OnceLock<core::ClientConfig> = OnceLock::new();
 
-pub fn run_server() {
-    // read data from json
-    let config: core::ClientConfig = match core::read_json() {
+fn get_config() -> &'static core::ClientConfig {
+    // read data from json once to avoide any unxpected errors,
+    CONFIG.get_or_init(|| match core::read_json() {
         Ok(data) => data,
         Err(err) => {
-            eprintln!(
-                "{} \nPlease run the setup command: `{} setup`.",
-                err, APPNAME
-            );
+            eprintln!("{} \nPlease run the setup command: {} setup.", err, APPNAME);
             process::exit(1);
         }
-    };
+    })
+}
 
-    if let false = status(core::client_state(&config)) {
-        offline(&config);
+pub fn run_server() {
+    if let false = status(core::client_state(&get_config())) {
+        offline();
     }
 
     loop {
@@ -37,7 +38,7 @@ pub fn run_server() {
                 warn!("device is discharging.");
                 // Wait for 30 seconds before sending the popup to the client
                 thread::sleep(time::Duration::from_secs(5));
-                state_discharging(&config);
+                state_discharging();
                 continue;
             }
             _ => {
@@ -61,11 +62,11 @@ where
     }
 }
 
-fn state_discharging(config: &core::ClientConfig) {
-    if status(core::client_state(config)) {
+fn state_discharging() {
+    if status(core::client_state(get_config())) {
         info!("client is online");
 
-        std::thread::sleep(std::time::Duration::from_secs(config.sec));
+        std::thread::sleep(std::time::Duration::from_secs(get_config().sec));
 
         let battery = match core::battery_present() {
             Ok(state) => state,
@@ -78,7 +79,7 @@ fn state_discharging(config: &core::ClientConfig) {
         match battery {
             battery::State::Discharging => {
                 info!("sending command to client");
-                let ssh_state = core::exigute_ssh(config);
+                let ssh_state = core::exigute_ssh(get_config());
                 let output = ssh_state.unwrap_or_else(|e| {
                     error!("Error during SSH execution: {}", e);
                     e.to_string()
@@ -91,7 +92,7 @@ fn state_discharging(config: &core::ClientConfig) {
             }
         }
     } else {
-        offline(config);
+        offline();
     }
 }
 
@@ -102,7 +103,51 @@ fn parse_user_input(output: String) {
             info!("user ignored power state");
             wait_for_power();
         }
-        _ => error!("error"),
+        "Sleep" => {
+            info!("user put the device to Sleep");
+            is_pc_off(output);
+        }
+        "Hibernate" => {
+            info!("user put the device to Hibernate");
+            is_pc_off(output);
+        }
+        "Shutdown" => {
+            info!("user put the device to Shutdown");
+            is_pc_off(output);
+        }
+        _ => error!("uexpected error"),
+    }
+}
+
+fn is_pc_off(option: &str) {
+    let mut times = 0;
+    const MAX_RETRIES: usize = 10;
+    const SLEEP_DURATION: std::time::Duration = std::time::Duration::from_secs(2);
+
+    while times < MAX_RETRIES {
+        std::thread::sleep(SLEEP_DURATION);
+        match core::client_state(get_config()) {
+            Ok(state) => {
+                info!(
+                    "Waiting for the device to {}... (attempt {}/{})",
+                    option,
+                    times + 1,
+                    MAX_RETRIES
+                );
+                if state {
+                    return;
+                }
+            }
+            Err(err) => {
+                error!(
+                    "Unable to read device state: {}. Retrying... (attempt {}/{})",
+                    err,
+                    times + 1,
+                    MAX_RETRIES
+                );
+            }
+        }
+        times += 1;
     }
 }
 
@@ -131,11 +176,11 @@ fn wait_for_power() {
     }
 }
 
-fn offline(config: &core::ClientConfig) {
+fn offline() {
     loop {
         trace!("Ofline state loop");
         std::thread::sleep(std::time::Duration::from_secs(5));
-        match core::client_state(config) {
+        match core::client_state(get_config()) {
             Ok(true) => {
                 info!("client is online");
                 break;

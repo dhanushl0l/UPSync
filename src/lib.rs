@@ -173,11 +173,7 @@ pub mod core {
         assert!(sess.authenticated());
 
         let mut channel = sess.channel_session()?;
-        // let command = format!(
-        //     // Need to implement automatic session and display identifier.
-        //     "export WAYLAND_DISPLAY=wayland-1 && export CLIENT=yes && upsync {}",
-        //     data.default_behaviour
-        // );
+
         let command = format!(
             // Need to implement automatic session and display identifier.
             "export WAYLAND_DISPLAY=wayland-1 && export CLIENT=yes && upsync"
@@ -190,6 +186,8 @@ pub mod core {
 
         Ok(s)
     }
+
+    pub fn wake_device() {}
 
     pub fn get_args() -> String {
         env::args()
