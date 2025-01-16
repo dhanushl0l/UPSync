@@ -147,8 +147,8 @@ pub mod core {
         return Ok(battery.state());
     }
 
-    pub fn client_state(config: &ClientConfig) -> Result<bool, io::Error> {
-        let command = format!("ping -c 1 -W 1 {}", config.ip);
+    pub fn state(config: &str) -> Result<bool, io::Error> {
+        let command = config;
         let output = process::Command::new("sh")
             .arg("-c")
             .arg(command)
@@ -176,7 +176,7 @@ pub mod core {
 
         let command = format!(
             // Need to implement automatic session and display identifier.
-            "export WAYLAND_DISPLAY=wayland-1 && export CLIENT=yes && upsync"
+            "export WAYLAND_DISPLAY=wayland-1 && upsync-gui"
         );
         channel.exec(&command)?;
         let mut s = String::new();

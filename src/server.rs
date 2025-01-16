@@ -18,7 +18,8 @@ fn get_config() -> &'static core::ClientConfig {
 }
 
 pub fn run_server() {
-    if let false = status(core::client_state(&get_config())) {
+    let config = format!("ping -c 1 -W 1 {}", get_config().ip);
+    if let false = status(core::state(&config)) {
         offline();
     }
 
@@ -63,7 +64,9 @@ where
 }
 
 fn state_discharging() {
-    if status(core::client_state(get_config())) {
+    let config = format!("ping -c 1 -W 1 {}", get_config().ip);
+
+    if status(core::state(&config)) {
         info!("client is online");
 
         std::thread::sleep(std::time::Duration::from_secs(get_config().sec));
@@ -100,19 +103,19 @@ fn parse_user_input(output: String) {
     let output = output.split_whitespace().next().unwrap_or("");
     match output {
         "ignore" => {
-            info!("user ignored power state");
+            info!("user {} power state", output);
             wait_for_power();
         }
         "suspend" => {
-            info!("user put the device to Sleep");
+            info!("user put the device to {}", output);
             is_pc_off(output);
         }
-        "Hibernate" => {
-            info!("user put the device to Hibernate");
+        "hibernate" => {
+            info!("user put the device to {}", output);
             is_pc_off(output);
         }
-        "Shutdown" => {
-            info!("user put the device to Shutdown");
+        "shutdown" => {
+            info!("user put the device to {}", output);
             is_pc_off(output);
         }
         _ => error!("uexpected error"),
@@ -122,33 +125,34 @@ fn parse_user_input(output: String) {
 fn is_pc_off(option: &str) {
     let mut times = 0;
     const MAX_RETRIES: usize = 10;
-    const SLEEP_DURATION: std::time::Duration = std::time::Duration::from_secs(2);
+    const SLEEP_DURATION: std::time::Duration = std::time::Duration::from_secs(5);
+    let config = format!("ping -c 1 -W 1 {}", get_config().ip);
 
     while times < MAX_RETRIES {
+        times += 1;
         std::thread::sleep(SLEEP_DURATION);
-        match core::client_state(get_config()) {
+        match core::state(&config) {
             Ok(state) => {
                 info!(
                     "Waiting for the device to {}... (attempt {}/{})",
-                    option,
-                    times + 1,
-                    MAX_RETRIES
+                    option, times, MAX_RETRIES
                 );
                 if state {
+                    continue;
+                } else {
+                    wait_for_power();
                     return;
                 }
             }
             Err(err) => {
                 error!(
                     "Unable to read device state: {}. Retrying... (attempt {}/{})",
-                    err,
-                    times + 1,
-                    MAX_RETRIES
+                    err, times, MAX_RETRIES
                 );
             }
         }
-        times += 1;
     }
+    wait_for_power()
 }
 
 fn wait_for_power() {
@@ -170,6 +174,7 @@ fn wait_for_power() {
             }
             _ => {
                 info!("device is charging and power is back");
+                wake_the_pc();
                 break;
             }
         }
@@ -177,16 +182,18 @@ fn wait_for_power() {
 }
 
 fn offline() {
+    let config = format!("ping -c 1 -W 1 {}", get_config().ip);
+
     loop {
         trace!("Ofline state loop");
         std::thread::sleep(std::time::Duration::from_secs(5));
-        match core::client_state(get_config()) {
+        match core::state(&config) {
             Ok(true) => {
                 info!("client is online");
                 break;
             }
             Ok(false) => {
-                debug!("client is offline")
+                info!("client is offline")
             }
             Err(e) => {
                 // implement error handling
@@ -194,4 +201,14 @@ fn offline() {
             }
         }
     }
+}
+
+fn wake_the_pc() {
+    let command = format!(
+        "wakeonlan -i {} {}",
+        get_config().ip,
+        get_config().mac_address
+    );
+
+    let wol = core::state(&command);
 }
