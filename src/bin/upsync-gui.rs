@@ -1,6 +1,6 @@
 use gtk::prelude::*;
 use gtk::{self, glib, Application, ApplicationWindow, Button, Orientation};
-use std::rc::Rc;
+use std::{process, rc::Rc};
 
 const APP_ID: &str = "com.dhanu.upsync";
 
@@ -78,7 +78,7 @@ fn popup(app: &Application) {
 
     button_shutdown.connect_clicked({
         let app = Rc::clone(&app);
-        move |_| close_app(&app, "shutdown")
+        move |_| close_app(&app, "poweroff")
     });
 
     window.present()
@@ -86,6 +86,9 @@ fn popup(app: &Application) {
 
 fn close_app(app: &Rc<gtk::Application>, action: &str) {
     println!("{action}");
+    let action = format!("systemctl {}", action);
+    let output = process::Command::new("sh").arg("-c").arg(action).output();
 
+    println!("{:?}", output);
     app.quit();
 }

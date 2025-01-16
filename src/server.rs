@@ -114,7 +114,7 @@ fn parse_user_input(output: String) {
             info!("user put the device to {}", output);
             is_pc_off(output);
         }
-        "shutdown" => {
+        "poweroff" => {
             info!("user put the device to {}", output);
             is_pc_off(output);
         }
