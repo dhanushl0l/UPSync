@@ -73,7 +73,7 @@ fn popup(app: &Application) {
 
     button_sleep.connect_clicked({
         let app = Rc::clone(&app);
-        move |_| close_app(&app, "sleep")
+        move |_| close_app(&app, "suspend")
     });
 
     button_shutdown.connect_clicked({

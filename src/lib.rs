@@ -147,7 +147,7 @@ pub mod core {
         return Ok(battery.state());
     }
 
-    pub fn state(config: &str) -> Result<bool, io::Error> {
+    pub fn exigute(config: &str) -> Result<bool, io::Error> {
         let command = config;
         let output = process::Command::new("sh")
             .arg("-c")
@@ -182,7 +182,7 @@ pub mod core {
         let mut s = String::new();
         channel.read_to_string(&mut s)?;
         let _ = channel.wait_close()?;
-        // println!("{}", channel.exit_status()?);
+        println!("{} : {}", channel.exit_status()?, s);
 
         Ok(s)
     }
