@@ -1,12 +1,10 @@
 use gtk::prelude::*;
 use gtk::{self, glib, Application, ApplicationWindow, Button, Orientation};
-use std::io;
-use std::process::{Command, Output};
 use std::rc::Rc;
 
 const APP_ID: &str = "com.dhanu.upsync";
 
-pub fn client_ui() -> glib::ExitCode {
+pub fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(popup);
@@ -86,25 +84,8 @@ fn popup(app: &Application) {
     window.present()
 }
 
-pub fn close_app(app: &Rc<gtk::Application>, action: &str) {
+fn close_app(app: &Rc<gtk::Application>, action: &str) {
     println!("{action}");
-    let a = match action {
-        "ignore" => put_to(action),
-        "hibernate" => put_to(action),
-        "sleep" => put_to(action),
-        "shutdown" => put_to(action),
-        _ => put_to(action),
-    };
-
-    match a {
-        Ok(result) => println!("{:?}", result),
-        Err(err) => println!("{}", err),
-    }
 
     app.quit();
-}
-
-fn put_to(action: &str) -> Result<Output, io::Error> {
-    let output = Command::new("sh").arg("-c").arg(action).output()?;
-    Ok(output)
 }

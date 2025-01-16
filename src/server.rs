@@ -103,7 +103,7 @@ fn parse_user_input(output: String) {
             info!("user ignored power state");
             wait_for_power();
         }
-        "Sleep" => {
+        "suspend" => {
             info!("user put the device to Sleep");
             is_pc_off(output);
         }
