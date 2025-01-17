@@ -19,7 +19,7 @@ fn get_config() -> &'static core::ClientConfig {
 
 pub fn run_server() {
     let config = format!("ping -c 1 -W 1 {}", get_config().ip);
-    if let false = status(core::exigute(&config)) {
+    if let false = status(core::run_command(&config)) {
         offline();
     }
 
@@ -66,7 +66,7 @@ where
 fn state_discharging() {
     let config = format!("ping -c 1 -W 1 {}", get_config().ip);
 
-    if status(core::exigute(&config)) {
+    if status(core::run_command(&config)) {
         info!("client is online");
 
         std::thread::sleep(std::time::Duration::from_secs(get_config().sec));
@@ -131,7 +131,7 @@ fn is_pc_off(option: &str) {
     while times < MAX_RETRIES {
         times += 1;
         std::thread::sleep(SLEEP_DURATION);
-        match core::exigute(&config) {
+        match core::run_command(&config) {
             Ok(state) => {
                 info!(
                     "Waiting for the device to {}... (attempt {}/{})",
@@ -187,7 +187,7 @@ fn offline() {
     loop {
         trace!("Ofline state loop");
         std::thread::sleep(std::time::Duration::from_secs(5));
-        match core::exigute(&config) {
+        match core::run_command(&config) {
             Ok(true) => {
                 info!("client is online");
                 break;
@@ -210,7 +210,7 @@ fn wake_the_pc() {
         get_config().mac_address
     );
 
-    let wol = core::exigute(&command);
+    let wol = core::run_command(&command);
 
     match wol {
         Ok(result) => {

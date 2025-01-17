@@ -147,7 +147,7 @@ pub mod core {
         return Ok(battery.state());
     }
 
-    pub fn exigute(config: &str) -> Result<bool, io::Error> {
+    pub fn run_command(config: &str) -> Result<bool, io::Error> {
         let command = config;
         let output = process::Command::new("sh")
             .arg("-c")
