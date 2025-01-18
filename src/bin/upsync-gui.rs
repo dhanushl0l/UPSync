@@ -1,5 +1,5 @@
 use gtk::prelude::*;
-use gtk::{self, glib, Application, ApplicationWindow, Button, Orientation};
+use gtk::{self, glib, Application, ApplicationWindow, Button, Label, Orientation};
 use std::rc::Rc;
 use upsync::core;
 
@@ -14,13 +14,17 @@ pub fn main() -> glib::ExitCode {
 }
 
 fn popup(app: &Application) {
+    let label = Label::builder().label(&get_default()).build();
+
     let button_sleep = Button::builder().label("Sleep").build();
     let button_hibernate = Button::builder().label("Hibernate").build();
     let button_shutdown = Button::builder().label("Shutdown").build();
-    let button_ignore = Button::builder()
-        .label("ignore")
-        .focus_on_click(true)
+    let button_ignore = Button::builder().label("ignore").build();
+
+    let gtk_box_parent = gtk::Box::builder()
+        .orientation(Orientation::Vertical)
         .build();
+    gtk_box_parent.append(&label);
 
     let button_width = 120;
     let button_height = 30;
@@ -51,6 +55,7 @@ fn popup(app: &Application) {
         .valign(gtk::Align::Center)
         .build();
 
+    center_container.append(&gtk_box_parent);
     center_container.append(&gtk_box);
 
     let window = ApplicationWindow::builder()
@@ -85,11 +90,20 @@ fn popup(app: &Application) {
     window.present()
 }
 
+fn get_default() -> String {
+    format!(
+        "System will {} in {} seconds. Click 'Ignore' to cancel.",
+        upsync::core::get_env("DEFAULT_BEHAVIOUR"),
+        upsync::core::get_env("SEC")
+    )
+}
+
 fn close_app(app: &Rc<gtk::Application>, action: &str) {
     println!("{action}");
     let action = format!("systemctl {}", action);
     let output = core::run_command(&action);
     match output {
+        // need to implement proper error handling
         Ok(result) => println!("{}", result),
         Err(err) => {
             println!("{}", err)

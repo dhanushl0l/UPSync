@@ -176,7 +176,8 @@ pub mod core {
 
         let command = format!(
             // Need to implement automatic session and display identifier.
-            "export WAYLAND_DISPLAY=wayland-1 && upsync-gui"
+            "export WAYLAND_DISPLAY=wayland-1 && DEFAULT_BEHAVIOUR={} && SEC={} &&upsync-gui",
+            data.default_behaviour, data.sec
         );
         channel.exec(&command)?;
         let mut s = String::new();
@@ -187,13 +188,18 @@ pub mod core {
         Ok(s)
     }
 
-    pub fn wake_device() {}
-
     pub fn get_args() -> String {
         env::args()
             .skip(1)
             .next()
             .unwrap_or_else(|| "default".to_string())
+    }
+
+    pub fn get_env(env: &str) -> String {
+        match env::var(env) {
+            Ok(val) => val,
+            Err(_) => "error".to_string(),
+        }
     }
 
     pub fn read_json() -> Result<ClientConfig, Box<dyn std::error::Error>> {
