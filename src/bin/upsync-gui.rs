@@ -1,3 +1,4 @@
+use glib::timeout_add_seconds;
 use gtk::prelude::*;
 use gtk::{self, glib, Application, ApplicationWindow, Button, Label, Orientation};
 use std::rc::Rc;
@@ -8,7 +9,24 @@ const APP_ID: &str = "com.dhanu.upsync";
 pub fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
 
-    app.connect_activate(popup);
+    app.connect_activate(|app| {
+        popup(app);
+
+        let sec: u32 = core::get_env("SEC").parse().unwrap_or(30);
+        timeout_add_seconds(sec, || {
+            let action = format!("systemctl {}", upsync::core::get_env("DEFAULT_BEHAVIOUR"));
+            let output = core::run_command(&action);
+
+            match output {
+                // need to implement proper error handling
+                Ok(result) => println!("{}", result),
+                Err(err) => {
+                    println!("{}", err)
+                }
+            }
+            gtk::glib::ControlFlow::Break
+        });
+    });
 
     app.run()
 }
