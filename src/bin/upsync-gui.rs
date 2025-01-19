@@ -14,16 +14,7 @@ pub fn main() -> glib::ExitCode {
 
         let sec: u32 = core::get_env("SEC").parse().unwrap_or(30);
         timeout_add_seconds(sec, || {
-            let action = format!("systemctl {}", upsync::core::get_env("DEFAULT_BEHAVIOUR"));
-            let output = core::run_command(&action);
-
-            match output {
-                // need to implement proper error handling
-                Ok(result) => println!("{}", result),
-                Err(err) => {
-                    println!("{}", err)
-                }
-            }
+            default();
             gtk::glib::ControlFlow::Break
         });
     });
@@ -114,6 +105,19 @@ fn get_default() -> String {
         upsync::core::get_env("DEFAULT_BEHAVIOUR"),
         upsync::core::get_env("SEC")
     )
+}
+
+fn default() {
+    let action = format!("systemctl {}", upsync::core::get_env("DEFAULT_BEHAVIOUR"));
+    let output = core::run_command(&action);
+
+    match output {
+        // need to implement proper error handling
+        Ok(result) => println!("{}", result),
+        Err(err) => {
+            println!("{}", err)
+        }
+    }
 }
 
 fn close_app(app: &Rc<gtk::Application>, action: &str) {
