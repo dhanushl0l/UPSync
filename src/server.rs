@@ -3,7 +3,7 @@ use log::{debug, error, info, trace, warn};
 use std::sync::OnceLock;
 use std::{process, thread, time};
 
-const APPNAME: &str = "smart-ups";
+const APPNAME: &str = "upsync";
 static CONFIG: OnceLock<core::ClientConfig> = OnceLock::new();
 
 fn get_config() -> &'static core::ClientConfig {
@@ -43,7 +43,7 @@ pub fn run_server() {
                 continue;
             }
             _ => {
-                info!("device is charging");
+                info!("power is back. device is charging");
                 continue;
             }
         }
@@ -64,9 +64,9 @@ where
 }
 
 fn state_discharging() {
-    let config = format!("ping -c 1 -W 1 {}", get_config().ip);
+    let ping_command = format!("ping -c 1 -W 1 {}", get_config().ip);
 
-    if status(core::run_command(&config)) {
+    if status(core::run_command(&ping_command)) {
         info!("client is online");
 
         std::thread::sleep(std::time::Duration::from_secs(get_config().sec));
@@ -75,7 +75,8 @@ fn state_discharging() {
             Ok(state) => state,
             Err(err) => {
                 error!("Unable to read battery status: {}", err);
-                return;
+                debug!("Returning charging as default");
+                battery::State::Charging
             }
         };
 
@@ -157,6 +158,7 @@ fn is_pc_off(option: &str) {
 
 fn wait_for_power() {
     loop {
+        trace!("wait_for_power loop");
         std::thread::sleep(std::time::Duration::from_secs(5));
 
         let battery = match core::battery_present() {
@@ -196,8 +198,8 @@ fn offline() {
                 info!("client is offline")
             }
             Err(e) => {
-                // implement error handling
-                warn!("Unable to read the client state: {}", e);
+                error!("Unable to read the client state: {}", e);
+                warn!("Verify the ip of the client and run '{} setup'", APPNAME);
             }
         }
     }
@@ -215,11 +217,17 @@ fn wake_the_pc() {
     match wol {
         Ok(result) => {
             if result {
-                println!("Command succeeded!");
+                info!("WOL command succeeded!");
             } else {
-                println!("Command failed!");
+                error!("WOL command failed!");
             }
         }
-        Err(err) => error!("error sending wol {}", err),
+        Err(err) => {
+            error!("error sending wol {}", err);
+            warn!(
+                "Verify the ip and mac address of the client and run '{} setup'",
+                APPNAME
+            );
+        }
     }
 }

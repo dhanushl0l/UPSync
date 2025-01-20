@@ -5,6 +5,8 @@ pub mod core {
     use battery;
     use std::{env, fs, io, process};
 
+    const APPNAME: &str = "upsync";
+
     // This enum represents the JSON structure
     use serde::{Deserialize, Serialize};
     #[derive(Serialize, Deserialize, Debug)]
@@ -16,14 +18,6 @@ pub mod core {
         pub sec: u64,
         pub popup: bool,
         pub default_behaviour: u8,
-    }
-
-    pub enum ClientAction {
-        Sleep,
-        Shutdown,
-        Hybernate,
-        Custom,
-        Demo,
     }
 
     impl ClientConfig {
@@ -224,15 +218,16 @@ pub mod core {
             "server" => server::run_server(),
             _ => {
                 println!(
-                    r#"Smart-UPS: Convert a non-smart UPS into a smart UPS using laptop power states.
+                    r#"{}: Convert a non-smart UPS into a smart UPS using laptop power states.
 
-Usage: smart-ups <command>
+Usage: {} <command>
 
 Commands:
     setup      Initialize the application (e.g., on a laptop).
     server     Start the power monitoring server.
     client     Run this on the client to see the demo popup.
-"#
+"#,
+                    APPNAME, APPNAME
                 )
             }
         }
