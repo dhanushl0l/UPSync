@@ -18,8 +18,7 @@ fn get_config() -> &'static core::ClientConfig {
 }
 
 pub fn run_server() {
-    let config = format!("ping -c 1 -W 1 {}", get_config().ip);
-    if let false = status(core::run_command(&config)) {
+    if let false = status() {
         offline();
     }
 
@@ -50,23 +49,19 @@ pub fn run_server() {
     }
 }
 
-fn status<E>(result: Result<bool, E>) -> bool
-where
-    E: std::fmt::Display,
-{
-    match result {
-        Ok(value) => value,
-        Err(e) => {
-            error!("Error: {}", e);
-            false // If the function fails, it returns false.
+fn status() -> bool {
+    match core::device_status(&get_config().ip) {
+        Ok(status) => status,
+        Err(err) => {
+            error!("{}", err);
+            info!("Assuming device is offline");
+            false
         }
     }
 }
 
 fn state_discharging() {
-    let ping_command = format!("ping -c 1 -W 1 {}", get_config().ip);
-
-    if status(core::run_command(&ping_command)) {
+    if status() {
         info!("client is online");
 
         std::thread::sleep(std::time::Duration::from_secs(get_config().sec));
@@ -184,22 +179,16 @@ fn wait_for_power() {
 }
 
 fn offline() {
-    let config = format!("ping -c 1 -W 1 {}", get_config().ip);
-
     loop {
         trace!("Ofline state loop");
         std::thread::sleep(std::time::Duration::from_secs(5));
-        match core::run_command(&config) {
-            Ok(true) => {
+        match status() {
+            true => {
                 info!("client is online");
                 break;
             }
-            Ok(false) => {
+            false => {
                 info!("client is offline")
-            }
-            Err(e) => {
-                error!("Unable to read the client state: {}", e);
-                warn!("Verify the ip of the client and run '{} setup'", APPNAME);
             }
         }
     }

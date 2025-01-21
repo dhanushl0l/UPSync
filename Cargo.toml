@@ -11,3 +11,4 @@ env_logger = "*"
 serde_json = "*"
 serde = { version = "*", features = ["derive"] }
 gtk = { version = "0.9.5", package = "gtk4", features = ["v4_12"] }
+tokio = { version = "1", features = ["full"] }

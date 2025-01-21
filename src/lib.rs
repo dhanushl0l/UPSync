@@ -3,7 +3,8 @@ mod setup;
 pub mod core {
     use crate::{server, setup};
     use battery;
-    use std::{env, fs, io, process};
+    use std::{env, error::Error, fs, io, process};
+    use tokio::net::TcpStream;
 
     const APPNAME: &str = "upsync";
 
@@ -151,14 +152,22 @@ pub mod core {
         Ok(output.status.success())
     }
 
+    #[tokio::main]
+    pub async fn device_status(ip: &str) -> Result<bool, Box<dyn Error>> {
+        match TcpStream::connect(ip).await {
+            Ok(_) => Ok(true),
+            // Return false on error assuming the client is down.
+            Err(_) => Ok(false),
+        }
+    }
+
     // This function is not yet optimized to perform as expected.
     use ssh2::Session;
     use std::io::prelude::*;
-    use std::net::TcpStream;
 
     pub fn exigute_ssh(data: &ClientConfig) -> Result<String, Box<dyn std::error::Error>> {
         let ip = format!("{}:22", data.ip);
-        let tcp = TcpStream::connect(&ip)?;
+        let tcp = std::net::TcpStream::connect(&ip)?;
         let mut sess = Session::new().unwrap();
         sess.set_tcp_stream(tcp);
         sess.handshake().unwrap();
@@ -231,5 +240,22 @@ Commands:
                 )
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_tokio() {
+        let state = match core::device_status("127.0.0.1:22") {
+            Ok(state) => state,
+            Err(err) => {
+                eprint!("{}", err);
+                false
+            }
+        };
+        assert!(state)
     }
 }
