@@ -25,8 +25,8 @@ pub mod core {
         pub fn new() -> ClientConfig {
             ClientConfig {
                 username: ClientConfig::parse_input_string("Enter the username of your local device: "),
-                key: ClientConfig::parse_input_string("Enter the key: "),
-                ip: ClientConfig::parse_input_string("Enter the ip of your device: "),
+                key: ClientConfig::parse_input_string("Enter the ssh key: "),
+                ip: ClientConfig::parse_input_string("Enter the IP address of your device (e.g., 192.168.66.99:22 or [::1]:22)"),
                 mac_address: ClientConfig::parse_input_string("Enter the MacAddress of your device: "),
                 sec: ClientConfig::parse_input_u64("Enter the time (in seconds) after power loss to put the device to sleep: \nDefault: 30"),
                 popup: ClientConfig::get_yes_no_input("Do you want to see the popup when power is out? (y/n): \nDefault: y"),

@@ -78,13 +78,7 @@ fn state_discharging() {
         match battery {
             battery::State::Discharging => {
                 info!("sending command to client");
-                let ssh_state = core::exigute_ssh(get_config());
-                let output = ssh_state.unwrap_or_else(|e| {
-                    error!("Error during SSH execution: {}", e);
-                    e.to_string()
-                });
-                info!("{}", output);
-                parse_user_input(output);
+                send_device_to();
             }
             _ => {
                 info!("power is back.");
@@ -92,6 +86,22 @@ fn state_discharging() {
         }
     } else {
         offline();
+    }
+}
+
+fn send_device_to() {
+    match get_config().popup {
+        true => {
+            let ssh_state = core::exigute_ssh(get_config());
+            let output = ssh_state.unwrap_or_else(|e| {
+                error!("Error during SSH execution: {}", e);
+                e.to_string()
+            });
+            info!("{}", output);
+            parse_user_input(output)
+        }
+
+        false => unimplemented!(),
     }
 }
 
