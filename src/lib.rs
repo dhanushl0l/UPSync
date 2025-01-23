@@ -161,11 +161,25 @@ pub mod core {
         }
     }
 
+    pub fn popup_command(data: &ClientConfig) -> String {
+        format!(
+            "export WAYLAND_DISPLAY=wayland-1 && DEFAULT_BEHAVIOUR={} && SEC={} &&upsync-gui",
+            data.default_behaviour, data.sec
+        )
+    }
+
+    pub fn no_popup_command(data: &ClientConfig) -> String {
+        format!("systemctl {}", data.default_behaviour)
+    }
+
     // This function is not yet optimized to perform as expected.
     use ssh2::Session;
     use std::io::prelude::*;
 
-    pub fn exigute_ssh(data: &ClientConfig) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn execute_ssh(
+        data: &ClientConfig,
+        command: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         let ip = format!("{}:22", data.ip);
         let tcp = std::net::TcpStream::connect(&ip)?;
         let mut sess = Session::new().unwrap();
@@ -177,11 +191,6 @@ pub mod core {
 
         let mut channel = sess.channel_session()?;
 
-        let command = format!(
-            // Need to implement automatic session and display identifier.
-            "export WAYLAND_DISPLAY=wayland-1 && DEFAULT_BEHAVIOUR={} && SEC={} &&upsync-gui",
-            data.default_behaviour, data.sec
-        );
         channel.exec(&command)?;
         let mut s = String::new();
         channel.read_to_string(&mut s)?;

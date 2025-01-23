@@ -90,18 +90,26 @@ fn state_discharging() {
 }
 
 fn send_device_to() {
-    match get_config().popup {
-        true => {
-            let ssh_state = core::exigute_ssh(get_config());
-            let output = ssh_state.unwrap_or_else(|e| {
-                error!("Error during SSH execution: {}", e);
-                e.to_string()
-            });
-            info!("{}", output);
-            parse_user_input(output)
-        }
+    let config = get_config();
+    let command = if config.popup {
+        core::popup_command(&config)
+    } else {
+        core::no_popup_command(&config)
+    };
 
-        false => unimplemented!(),
+    match core::execute_ssh(config, &command) {
+        Ok(output) => {
+            debug!("{}", output);
+            if config.popup {
+                info!("user selected {}", output);
+                parse_user_input(output);
+            } else {
+                wait_for_power();
+            }
+        }
+        Err(e) => {
+            error!("Error during SSH execution: {}", e);
+        }
     }
 }
 
