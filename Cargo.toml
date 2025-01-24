@@ -1,7 +1,12 @@
 [package]
 name = "upsync"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
+
+authors = ["dhanush <dhanush@tutanota.de>"]  # List of authors
+description = "UPSync converts non-smart UPS to smart UPS"
+license = "GPL-2.0-only"
+repository = "https://github.com/dhanushl0l/UPSync"
 
 [dependencies]
 battery = "*"
