@@ -17,8 +17,24 @@ pub mod core {
         pub ip: String,
         pub mac_address: String,
         pub sec: u64,
+        pub default_behaviour: Behaviour,
+        pub platform: Platform,
         pub popup: bool,
-        pub default_behaviour: u8,
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub enum Behaviour {
+        Sleep,
+        Hybernate,
+        Shutdown,
+        Ignore,
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub enum Platform {
+        Wayland,
+        X11,
+        Windows,
     }
 
     impl ClientConfig {
@@ -29,8 +45,9 @@ pub mod core {
                 ip: ClientConfig::parse_input_string("Enter the IP address of your device (e.g., 192.168.66.99:22 or [::1]:22)"),
                 mac_address: ClientConfig::parse_input_string("Enter the MacAddress of your device: "),
                 sec: ClientConfig::parse_input_u64("Enter the time (in seconds) after power loss to put the device to sleep: \nDefault: 30"),
+                default_behaviour: ClientConfig::parse_input_behaviour("Default behaviour when power is out.\n1 = Sleep\n2 = Hybernate\n3 = Shutdown\n4 = Do nothing \nDefault: 1"),
+                platform: ClientConfig::parse_input_platform("What is yout client device platform.\n1 = linux:Wayland\n2 = linux:X11\n3 = Windows"),
                 popup: ClientConfig::get_yes_no_input("Do you want to see the popup when power is out? (y/n): \nDefault: y"),
-                default_behaviour: ClientConfig::parse_input_u8("Default behaviour when power is out.\n1 = Sleep\n2 = Shutdown\n3 = Hybernate\n4 = Do nothing \nDefault: 1"),
             }
         }
 
@@ -104,20 +121,43 @@ pub mod core {
             std::process::exit(1);
         }
 
-        fn parse_input_u8(prompt: &str) -> u8 {
+        fn parse_input_behaviour(prompt: &str) -> Behaviour {
             let mut attempts = 0;
 
             while attempts < 3 {
                 let input = ClientConfig::get_input(prompt);
 
                 if input.is_empty() {
-                    return 1;
+                    return Behaviour::Sleep;
                 }
 
                 match input.parse::<u8>() {
-                    Ok(x) if x >= 1 && x <= 4 => return x,
+                    Ok(1) => return Behaviour::Sleep,
+                    Ok(2) => return Behaviour::Hybernate,
+                    Ok(3) => return Behaviour::Shutdown,
+                    Ok(4) => return Behaviour::Ignore,
                     _ => {
                         eprintln!("Invalid input. Please enter a choice between 1 and 4.");
+                        attempts += 1;
+                    }
+                }
+            }
+            println!("Exceeded maximum attempts.");
+            std::process::exit(1);
+        }
+
+        fn parse_input_platform(prompt: &str) -> Platform {
+            let mut attempts = 0;
+
+            while attempts < 3 {
+                let input = ClientConfig::get_input(prompt);
+
+                match input.parse::<u8>() {
+                    Ok(1) => return Platform::Wayland,
+                    Ok(2) => return Platform::X11,
+                    Ok(3) => return Platform::Windows,
+                    _ => {
+                        eprintln!("Invalid input. Please enter a choice between 1 and 3.");
                         attempts += 1;
                     }
                 }
@@ -163,13 +203,13 @@ pub mod core {
 
     pub fn popup_command(data: &ClientConfig) -> String {
         format!(
-            "export WAYLAND_DISPLAY=wayland-1 && DEFAULT_BEHAVIOUR={} && SEC={} &&upsync-gui",
+            "export WAYLAND_DISPLAY=wayland-1 && DEFAULT_BEHAVIOUR={:?} && SEC={} &&upsync-gui",
             data.default_behaviour, data.sec
         )
     }
 
     pub fn no_popup_command(data: &ClientConfig) -> String {
-        format!("systemctl {}", data.default_behaviour)
+        format!("systemctl {:?}", data.default_behaviour)
     }
 
     // This function is not yet optimized to perform as expected.
