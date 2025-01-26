@@ -97,7 +97,7 @@ fn send_device_to() {
         core::no_popup_command(&config)
     };
 
-    match core::execute_ssh(config, &command) {
+    match core::connect_to_client() {
         Ok(output) => {
             debug!("{}", output);
             if config.popup {

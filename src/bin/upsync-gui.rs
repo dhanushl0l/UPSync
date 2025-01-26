@@ -1,16 +1,43 @@
 use glib::timeout_add_seconds;
 use gtk::prelude::*;
 use gtk::{self, glib, Application, ApplicationWindow, Button, Label, Orientation};
-use std::rc::Rc;
+use std::error::Error;
+use tokio::{io::AsyncReadExt, net::TcpListener};
 use upsync::core;
 
 const APP_ID: &str = "com.dhanu.upsync";
 
-pub fn main() -> glib::ExitCode {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    //alpha code
+    let listener = TcpListener::bind("127.0.0.1:8080").await?;
+    println!("Server listening on 127.0.0.1:8080");
+
+    loop {
+        let (mut socket, addr) = listener.accept().await?;
+        println!("New connection from {}", addr);
+
+        tokio::spawn(async move {
+            let mut buffer = vec![0; 1024];
+
+            match socket.read(&mut buffer).await {
+                Ok(n) => {
+                    let received = String::from_utf8_lossy(&buffer[..n]);
+                    run_gui(received.into_owned());
+                }
+                Err(e) => {
+                    eprintln!("Error reading from socket: {}", e);
+                }
+            }
+        });
+    }
+}
+
+fn run_gui(defaults: String) -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
 
-    app.connect_activate(|app| {
-        popup(app);
+    app.connect_activate(move |app| {
+        popup(app, defaults.clone());
 
         let sec: u32 = core::get_env("SEC").parse().unwrap_or(30);
         timeout_add_seconds(sec, || {
@@ -22,8 +49,8 @@ pub fn main() -> glib::ExitCode {
     app.run()
 }
 
-fn popup(app: &Application) {
-    let label = Label::builder().label(&get_default()).build();
+fn popup(app: &Application, defaults: String) {
+    let label = Label::builder().label(defaults).build();
 
     let button_sleep = Button::builder().label("Sleep").build();
     let button_hibernate = Button::builder().label("Hibernate").build();
@@ -75,36 +102,30 @@ fn popup(app: &Application) {
         .child(&center_container)
         .build();
 
-    let app = Rc::new(app.clone());
+    let window_ref = window.clone();
     button_ignore.connect_clicked({
-        let app = Rc::clone(&app);
-        move |_| close_app(&app, "ignore")
+        let window = window_ref.clone();
+        move |_| close_app(&window, "ignore")
     });
 
-    button_hibernate.connect_clicked({
-        let app = Rc::clone(&app);
-        move |_| close_app(&app, "hibernate")
-    });
-
+    let window_ref = window.clone();
     button_sleep.connect_clicked({
-        let app = Rc::clone(&app);
-        move |_| close_app(&app, "suspend")
+        let window = window_ref.clone();
+        move |_| close_app(&window, "suspend")
     });
 
+    let window_ref = window.clone();
+    button_hibernate.connect_clicked({
+        let window = window_ref.clone();
+        move |_| close_app(&window, "hibernate")
+    });
+
+    let window_ref = window.clone();
     button_shutdown.connect_clicked({
-        let app = Rc::clone(&app);
-        move |_| close_app(&app, "poweroff")
+        let window = window_ref.clone();
+        move |_| close_app(&window, "poweroff")
     });
-
     window.present()
-}
-
-fn get_default() -> String {
-    format!(
-        "System will {} in {} seconds. Click 'Ignore' to cancel.",
-        upsync::core::get_env("DEFAULT_BEHAVIOUR"),
-        upsync::core::get_env("SEC")
-    )
 }
 
 fn default() {
@@ -120,7 +141,7 @@ fn default() {
     }
 }
 
-fn close_app(app: &Rc<gtk::Application>, action: &str) {
+fn close_app(app: &ApplicationWindow, action: &str) {
     println!("{action}");
     let action = format!("systemctl {}", action);
     let output = core::run_command(&action);
@@ -131,5 +152,5 @@ fn close_app(app: &Rc<gtk::Application>, action: &str) {
             println!("{}", err)
         }
     }
-    app.quit();
+    app.close();
 }

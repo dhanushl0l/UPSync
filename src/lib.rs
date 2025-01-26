@@ -12,7 +12,6 @@ pub mod core {
     use serde::{Deserialize, Serialize};
     #[derive(Serialize, Deserialize, Debug)]
     pub struct ClientConfig {
-        pub username: String,
         pub key: String,
         pub ip: String,
         pub mac_address: String,
@@ -40,8 +39,7 @@ pub mod core {
     impl ClientConfig {
         pub fn new() -> ClientConfig {
             ClientConfig {
-                username: ClientConfig::parse_input_string("Enter the username of your local device: "),
-                key: ClientConfig::parse_input_string("Enter the ssh key: "),
+                key: ClientConfig::get_key("Create a secure key (minimum 8 characters)"),
                 ip: ClientConfig::parse_input_string("Enter the IP address of your device (e.g., 192.168.66.99:22 or [::1]:22)"),
                 mac_address: ClientConfig::parse_input_string("Enter the MacAddress of your device: "),
                 sec: ClientConfig::parse_input_u64("Enter the time (in seconds) after power loss to put the device to sleep: \nDefault: 30"),
@@ -49,6 +47,23 @@ pub mod core {
                 platform: ClientConfig::parse_input_platform("What is yout client device platform.\n1 = linux:Wayland\n2 = linux:X11\n3 = Windows"),
                 popup: ClientConfig::get_yes_no_input("Do you want to see the popup when power is out? (y/n): \nDefault: y"),
             }
+        }
+
+        fn get_key(prompt: &str) -> String {
+            let mut attempts = 0;
+
+            while attempts < 3 {
+                let prompt = ClientConfig::parse_input_string(prompt);
+
+                if prompt.len() >= 8 {
+                    return prompt;
+                } else {
+                    attempts += 1;
+                    println!("Key must be at least 8 characters long. Try again.");
+                }
+            }
+
+            panic!("Maximum attempts exceeded. Could not get a valid key.");
         }
 
         fn get_input(prompt: &str) -> String {
@@ -212,32 +227,8 @@ pub mod core {
         format!("systemctl {:?}", data.default_behaviour)
     }
 
-    // This function is not yet optimized to perform as expected.
-    use ssh2::Session;
-    use std::io::prelude::*;
-
-    pub fn execute_ssh(
-        data: &ClientConfig,
-        command: &str,
-    ) -> Result<String, Box<dyn std::error::Error>> {
-        let ip = format!("{}:22", data.ip);
-        let tcp = std::net::TcpStream::connect(&ip)?;
-        let mut sess = Session::new().unwrap();
-        sess.set_tcp_stream(tcp);
-        sess.handshake().unwrap();
-
-        sess.userauth_password(&data.username, &data.key)?;
-        assert!(sess.authenticated());
-
-        let mut channel = sess.channel_session()?;
-
-        channel.exec(&command)?;
-        let mut s = String::new();
-        channel.read_to_string(&mut s)?;
-        let _ = channel.wait_close()?;
-        println!("{} : {}", channel.exit_status()?, s);
-
-        Ok(s)
+    pub fn connect_to_client() -> Result<String, String> {
+        unimplemented!()
     }
 
     pub fn get_args() -> String {

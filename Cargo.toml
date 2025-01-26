@@ -10,7 +10,6 @@ repository = "https://github.com/dhanushl0l/UPSync"
 
 [dependencies]
 battery = "*"
-ssh2 = "*"
 log = "*"
 env_logger = "*"
 serde_json = "*"
