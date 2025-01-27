@@ -1,16 +1,63 @@
 use glib::timeout_add_seconds;
 use gtk::prelude::*;
 use gtk::{self, glib, Application, ApplicationWindow, Button, Label, Orientation};
+use serde_json::to_writer;
 use std::error::Error;
+use std::sync::OnceLock;
+use std::{fs::File, process};
 use tokio::{io::AsyncReadExt, net::TcpListener};
 use upsync::core;
 
 const APP_ID: &str = "com.dhanu.upsync";
+const APPNAME: &str = "upsync-gui";
+
+static CONFIG: OnceLock<core::ServerConfig> = OnceLock::new();
+
+fn get_config() -> &'static core::ServerConfig {
+    // read data from json once to avoide any unxpected errors,
+    CONFIG.get_or_init(|| match core::read_json("Config.json") {
+        Ok(data) => data,
+        Err(err) => {
+            eprintln!("{} \nPlease run the setup command: {} setup.", err, APPNAME);
+            process::exit(1);
+        }
+    })
+}
+
+fn main() {
+    match core::get_args().as_str() {
+        "setup" => setup(),
+        _ => {
+            let test = run_server();
+        }
+    }
+}
+
+fn setup() {
+    println!("Are you sure you want to delete the existing config and start creating a new config? (y/n)");
+    let input = core::user_input().unwrap().to_lowercase();
+    match input.as_str() {
+        "y" => continue_setup(),
+        "n" => process::exit(0),
+        _ => {
+            println!("Please enter a valid option.");
+            process::exit(1);
+        }
+    }
+}
+
+fn continue_setup() {
+    use core::ServerConfig;
+    let config = ServerConfig::new();
+
+    let file = File::create("Config.json").unwrap();
+    to_writer(file, &config).unwrap();
+}
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn run_server() -> Result<(), Box<dyn Error>> {
     //alpha code
-    let listener = TcpListener::bind("127.0.0.1:8080").await?;
+    let listener = TcpListener::bind(&get_config().ip).await?;
     println!("Server listening on 127.0.0.1:8080");
 
     loop {

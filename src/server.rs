@@ -8,7 +8,7 @@ static CONFIG: OnceLock<core::ClientConfig> = OnceLock::new();
 
 fn get_config() -> &'static core::ClientConfig {
     // read data from json once to avoide any unxpected errors,
-    CONFIG.get_or_init(|| match core::read_json() {
+    CONFIG.get_or_init(|| match core::read_json("config.json") {
         Ok(data) => data,
         Err(err) => {
             eprintln!("{} \nPlease run the setup command: {} setup.", err, APPNAME);
