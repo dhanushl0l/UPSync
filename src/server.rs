@@ -1,7 +1,10 @@
 use crate::core;
 use log::{debug, error, info, trace, warn};
+use std::error::Error;
 use std::sync::OnceLock;
 use std::{process, thread, time};
+use tokio::io::AsyncWriteExt;
+use tokio::net::TcpStream;
 
 const APPNAME: &str = "upsync";
 static CONFIG: OnceLock<core::ClientConfig> = OnceLock::new();
@@ -78,7 +81,10 @@ fn state_discharging() {
         match battery {
             battery::State::Discharging => {
                 info!("sending command to client");
-                send_device_to();
+                match send_device_to() {
+                    Ok(()) => wait_for_power(),
+                    Err(err) => error!("error connecting to client: {}", err),
+                }
             }
             _ => {
                 info!("power is back.");
@@ -89,28 +95,20 @@ fn state_discharging() {
     }
 }
 
-fn send_device_to() {
-    let config = get_config();
-    let command = if config.popup {
-        core::popup_command(&config)
-    } else {
-        core::no_popup_command(&config)
-    };
+#[tokio::main]
+async fn send_device_to() -> Result<(), Box<dyn Error>> {
+    // Connect to a peer
+    let mut stream = TcpStream::connect("127.0.0.1:8080").await?;
 
-    match core::connect_to_client() {
-        Ok(output) => {
-            debug!("{}", output);
-            if config.popup {
-                info!("user selected {}", output);
-                parse_user_input(output);
-            } else {
-                wait_for_power();
-            }
-        }
-        Err(e) => {
-            error!("Error during SSH execution: {}", e);
-        }
-    }
+    let default = format!(
+        "The device will auto {:?} in {:?} sec click ignore to cancel",
+        get_config().default_behaviour,
+        get_config().sec
+    );
+    // Write some data.
+    stream.write_all(default.as_bytes()).await?;
+
+    Ok(())
 }
 
 fn parse_user_input(output: String) {
