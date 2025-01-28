@@ -57,8 +57,8 @@ fn continue_setup() {
 #[tokio::main]
 async fn run_server() -> Result<(), Box<dyn Error>> {
     //alpha code
-    let listener = TcpListener::bind(&get_config().ip).await?;
-    println!("Server listening on 127.0.0.1:8080");
+    let ip = format!("0.0.0.0:{}", get_config().ip);
+    let listener = TcpListener::bind(&ip).await?;
 
     loop {
         let (mut socket, addr) = listener.accept().await?;

@@ -67,7 +67,7 @@ fn state_discharging() {
     if status() {
         info!("client is online");
 
-        std::thread::sleep(std::time::Duration::from_secs(get_config().sec));
+        // std::thread::sleep(std::time::Duration::from_secs(get_config().sec));
 
         let battery = match core::battery_present() {
             Ok(state) => state,
@@ -94,73 +94,16 @@ fn state_discharging() {
 
 #[tokio::main]
 async fn send_device_to() -> Result<(), Box<dyn Error>> {
-    // Connect to a peer
-    let mut stream = TcpStream::connect("127.0.0.1:8080").await?;
+    let mut stream = TcpStream::connect(&get_config().ip).await?;
 
     let default = format!(
-        "The device will auto {:?} in {:?} sec click ignore to cancel",
+        "The device will automatically {:?} in {:?} seconds. Click 'Ignore' to cancel.",
         get_config().default_behaviour,
         get_config().sec
     );
     // Write some data.
     stream.write_all(default.as_bytes()).await?;
     Ok(())
-}
-
-fn parse_user_input(output: String) {
-    let output = output.split_whitespace().next().unwrap_or("");
-    match output {
-        "ignore" => {
-            info!("user {} power state", output);
-            wait_for_power();
-        }
-        "suspend" => {
-            info!("user put the device to {}", output);
-            is_pc_off(output);
-        }
-        "hibernate" => {
-            info!("user put the device to {}", output);
-            is_pc_off(output);
-        }
-        "poweroff" => {
-            info!("user put the device to {}", output);
-            is_pc_off(output);
-        }
-        _ => error!("uexpected error"),
-    }
-}
-
-fn is_pc_off(option: &str) {
-    let mut times = 0;
-    const MAX_RETRIES: usize = 10;
-    const SLEEP_DURATION: std::time::Duration = std::time::Duration::from_secs(5);
-    let config = format!("ping -c 1 -W 1 {}", get_config().ip);
-
-    while times < MAX_RETRIES {
-        times += 1;
-        std::thread::sleep(SLEEP_DURATION);
-        match core::run_command(&config) {
-            Ok(state) => {
-                info!(
-                    "Waiting for the device to {}... (attempt {}/{})",
-                    option, times, MAX_RETRIES
-                );
-                if state {
-                    continue;
-                } else {
-                    wait_for_power();
-                    return;
-                }
-            }
-            Err(err) => {
-                error!(
-                    "Unable to read device state: {}. Retrying... (attempt {}/{})",
-                    err, times, MAX_RETRIES
-                );
-            }
-        }
-    }
-    wait_for_power()
 }
 
 fn wait_for_power() {
@@ -175,7 +118,8 @@ fn wait_for_power() {
         let battery = match core::battery_present() {
             Ok(state) => state,
             Err(err) => {
-                error!("Error: {}", err);
+                error!("Unable to read battery status: {}", err);
+                debug!("Returning charging as default");
                 continue;
             }
         };
