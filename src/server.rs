@@ -27,7 +27,7 @@ pub fn run_server() {
 
     loop {
         trace!("Main loop!");
-        thread::sleep(time::Duration::from_secs(1));
+        thread::sleep(time::Duration::from_secs(5));
         let battery = match core::battery_present() {
             Ok(state) => state,
             Err(err) => {
@@ -45,7 +45,7 @@ pub fn run_server() {
                 continue;
             }
             _ => {
-                info!("power is back. device is charging");
+                info!("Device is charging");
                 continue;
             }
         }
@@ -81,10 +81,7 @@ fn state_discharging() {
         match battery {
             battery::State::Discharging => {
                 info!("sending command to client");
-                match send_device_to() {
-                    Ok(()) => wait_for_power(),
-                    Err(err) => error!("error connecting to client: {}", err),
-                }
+                wait_for_power();
             }
             _ => {
                 info!("power is back.");
@@ -107,7 +104,6 @@ async fn send_device_to() -> Result<(), Box<dyn Error>> {
     );
     // Write some data.
     stream.write_all(default.as_bytes()).await?;
-
     Ok(())
 }
 
@@ -168,6 +164,10 @@ fn is_pc_off(option: &str) {
 }
 
 fn wait_for_power() {
+    match send_device_to() {
+        Ok(()) => info!("popup open surcess"),
+        Err(err) => error!("popup open error: {}", err),
+    }
     loop {
         trace!("wait_for_power loop");
         std::thread::sleep(std::time::Duration::from_secs(5));
