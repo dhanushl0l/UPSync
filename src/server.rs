@@ -53,7 +53,7 @@ pub fn run_server() {
 }
 
 fn status() -> bool {
-    match core::device_status(&get_config().ip) {
+    match core::device_status() {
         Ok(status) => status,
         Err(err) => {
             error!("{}", err);
@@ -96,13 +96,15 @@ fn state_discharging() {
 async fn send_device_to() -> Result<(), Box<dyn Error>> {
     let mut stream = TcpStream::connect(&get_config().ip).await?;
 
-    let default = format!(
-        "The device will automatically {:?} in {:?} seconds. Click 'Ignore' to cancel.",
+    // this was not secure in any means need to implement secure communication
+    let message = format!(
+        "{}|The device will automatically {:?} in {:?} seconds. Click 'Ignore' to cancel.",
+        get_config().key,
         get_config().default_behaviour,
         get_config().sec
     );
-    // Write some data.
-    stream.write_all(default.as_bytes()).await?;
+
+    stream.write_all(message.as_bytes()).await?;
     Ok(())
 }
 

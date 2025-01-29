@@ -56,9 +56,9 @@ fn continue_setup() {
 
 #[tokio::main]
 async fn run_server() -> Result<(), Box<dyn Error>> {
-    //alpha code
     let ip = format!("0.0.0.0:{}", get_config().ip);
     let listener = TcpListener::bind(&ip).await?;
+    println!("Server started on {}", ip);
 
     loop {
         let (mut socket, addr) = listener.accept().await?;
@@ -69,8 +69,16 @@ async fn run_server() -> Result<(), Box<dyn Error>> {
 
             match socket.read(&mut buffer).await {
                 Ok(n) => {
-                    let received = String::from_utf8_lossy(&buffer[..n]);
-                    run_gui(received.into_owned());
+                    let received = String::from_utf8_lossy(&buffer[..n]).to_string();
+                    let mut parts = received.splitn(2, '|');
+                    let (key, data) = (parts.next().unwrap_or(""), parts.next().unwrap_or(""));
+
+                    if key == get_config().key {
+                        println!("Valid key received from {}", addr);
+                        run_gui(data.to_string());
+                    } else {
+                        println!("Invalid key received from {}", addr);
+                    }
                 }
                 Err(e) => {
                     eprintln!("Error reading from socket: {}", e);

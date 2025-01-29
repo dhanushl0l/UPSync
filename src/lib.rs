@@ -47,9 +47,7 @@ pub mod core {
         pub fn new() -> ServerConfig {
             ServerConfig {
                 key: get_key("Create a secure key (minimum 8 characters)"),
-                ip: parse_input_string(
-                    "Enter the IP address of your server (e.g., 192.168.66.99:22 or [::1]:22)",
-                ),
+                ip: parse_input_string("Enter the port no the server is running (e.g., 9898)"),
             }
         }
     }
@@ -225,8 +223,8 @@ pub mod core {
     }
 
     #[tokio::main]
-    pub async fn device_status(ip: &str) -> Result<bool, Box<dyn Error>> {
-        match TcpStream::connect(ip).await {
+    pub async fn device_status() -> Result<bool, Box<dyn Error>> {
+        match TcpStream::connect("80").await {
             Ok(_) => Ok(true),
             // Return false on error assuming the client is down.
             Err(_) => Ok(false),
@@ -306,7 +304,7 @@ mod test {
 
     #[test]
     fn test_tokio() {
-        let state = match core::device_status("127.0.0.1:22") {
+        let state = match core::device_status() {
             Ok(state) => state,
             Err(err) => {
                 eprint!("{}", err);
