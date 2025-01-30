@@ -53,7 +53,7 @@ pub fn run_server() {
 }
 
 fn status() -> bool {
-    match core::device_status() {
+    match core::device_status(&get_config().ip) {
         Ok(status) => status,
         Err(err) => {
             error!("{}", err);

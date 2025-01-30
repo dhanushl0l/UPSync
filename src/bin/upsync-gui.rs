@@ -9,16 +9,19 @@ use tokio::{io::AsyncReadExt, net::TcpListener};
 use upsync::core;
 
 const APP_ID: &str = "com.dhanu.upsync";
-const APPNAME: &str = "upsync-gui";
 
 static CONFIG: OnceLock<core::ServerConfig> = OnceLock::new();
 
 fn get_config() -> &'static core::ServerConfig {
     // read data from json once to avoide any unxpected errors,
-    CONFIG.get_or_init(|| match core::read_json("Config.json") {
+    CONFIG.get_or_init(|| match core::read_json("config.json") {
         Ok(data) => data,
         Err(err) => {
-            eprintln!("{} \nPlease run the setup command: {} setup.", err, APPNAME);
+            eprintln!(
+                "{} \nPlease run the setup command: {} setup.",
+                err,
+                core::GUI_APPNAME
+            );
             process::exit(1);
         }
     })

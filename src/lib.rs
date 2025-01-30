@@ -10,7 +10,8 @@ pub mod core {
 
     use crate::{server, setup};
 
-    const APPNAME: &str = "upsync";
+    pub const APPNAME: &str = "upsync";
+    pub const GUI_APPNAME: &str = "upsync-gui";
 
     #[derive(Serialize, Deserialize, Debug)]
     pub struct ClientConfig {
@@ -223,8 +224,8 @@ pub mod core {
     }
 
     #[tokio::main]
-    pub async fn device_status() -> Result<bool, Box<dyn Error>> {
-        match TcpStream::connect("80").await {
+    pub async fn device_status(ip: &str) -> Result<bool, Box<dyn Error>> {
+        match TcpStream::connect(ip).await {
             Ok(_) => Ok(true),
             // Return false on error assuming the client is down.
             Err(_) => Ok(false),
@@ -304,7 +305,7 @@ mod test {
 
     #[test]
     fn test_tokio() {
-        let state = match core::device_status() {
+        let state = match core::device_status("127.0.0.1:22") {
             Ok(state) => state,
             Err(err) => {
                 eprint!("{}", err);
