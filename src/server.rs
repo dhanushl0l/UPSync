@@ -98,7 +98,7 @@ async fn send_device_to() -> Result<(), Box<dyn Error>> {
 
     // this was not secure in any means need to implement secure communication
     let message = format!(
-        "{}|The device will automatically {:?} in {:?} seconds. Click 'Ignore' to cancel.",
+        "{}|{:?}|{}",
         get_config().key,
         get_config().default_behaviour,
         get_config().sec

@@ -1,6 +1,8 @@
+use env_logger::{Builder, Env};
 use glib::timeout_add_seconds;
 use gtk::prelude::*;
 use gtk::{self, glib, Application, ApplicationWindow, Button, Label, Orientation};
+use log::{debug, error, info, warn};
 use serde_json::to_writer;
 use std::error::Error;
 use std::sync::OnceLock;
@@ -14,7 +16,7 @@ static CONFIG: OnceLock<core::ServerConfig> = OnceLock::new();
 
 fn get_config() -> &'static core::ServerConfig {
     // read data from json once to avoide any unxpected errors,
-    CONFIG.get_or_init(|| match core::read_json("config.json") {
+    CONFIG.get_or_init(|| match core::read_json("Config.json") {
         Ok(data) => data,
         Err(err) => {
             eprintln!(
@@ -28,11 +30,15 @@ fn get_config() -> &'static core::ServerConfig {
 }
 
 fn main() {
+    let env = Env::default().filter_or("LOG", "info");
+    Builder::from_env(env).init();
+
     match core::get_args().as_str() {
         "setup" => setup(),
-        _ => {
-            let test = run_server();
-        }
+        _ => match run_server() {
+            Ok(_) => info!("running server"),
+            Err(err) => error!("error opening gui {}", err),
+        },
     }
 }
 
@@ -61,11 +67,11 @@ fn continue_setup() {
 async fn run_server() -> Result<(), Box<dyn Error>> {
     let ip = format!("0.0.0.0:{}", get_config().ip);
     let listener = TcpListener::bind(&ip).await?;
-    println!("Server started on {}", ip);
+    info!("Server started on {}", ip);
 
     loop {
         let (mut socket, addr) = listener.accept().await?;
-        println!("New connection from {}", addr);
+        debug!("New connection from {}", addr);
 
         tokio::spawn(async move {
             let mut buffer = vec![0; 1024];
@@ -73,31 +79,40 @@ async fn run_server() -> Result<(), Box<dyn Error>> {
             match socket.read(&mut buffer).await {
                 Ok(n) => {
                     let received = String::from_utf8_lossy(&buffer[..n]).to_string();
+                    println!("{}", received);
                     let mut parts = received.splitn(2, '|');
-                    let (key, data) = (parts.next().unwrap_or(""), parts.next().unwrap_or(""));
+                    let (key, default, sec) = (
+                        parts.next().unwrap_or(""),
+                        parts.next().unwrap_or(""),
+                        parts.next().unwrap_or(""),
+                    );
 
+                    let message = format!(
+                        "The device will automatically {} in {} seconds. Click 'Ignore' to cancel.",
+                        default, sec
+                    );
+                    let sec = sec.parse().unwrap_or_else(|_| 30);
                     if key == get_config().key {
-                        println!("Valid key received from {}", addr);
-                        run_gui(data.to_string());
+                        info!("Valid key received from {}", addr);
+                        run_gui(message, sec);
                     } else {
-                        println!("Invalid key received from {}", addr);
+                        warn!("Invalid key received from {}", addr);
                     }
                 }
                 Err(e) => {
-                    eprintln!("Error reading from socket: {}", e);
+                    error!("Error reading from socket: {}", e);
                 }
             }
         });
     }
 }
 
-fn run_gui(defaults: String) -> glib::ExitCode {
+fn run_gui(defaults: String, sec: u32) -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(move |app| {
         popup(app, defaults.clone());
 
-        let sec: u32 = core::get_env("SEC").parse().unwrap_or(30);
         timeout_add_seconds(sec, || {
             default();
             gtk::glib::ControlFlow::Break
@@ -187,27 +202,26 @@ fn popup(app: &Application, defaults: String) {
 }
 
 fn default() {
-    let action = format!("systemctl {}", upsync::core::get_env("DEFAULT_BEHAVIOUR"));
+    let action = format!("systemctl suspend");
     let output = core::run_command(&action);
 
     match output {
         // need to implement proper error handling
-        Ok(result) => println!("{}", result),
+        Ok(result) => info!("{}", result),
         Err(err) => {
-            println!("{}", err)
+            error!("Error executing command: {}", err)
         }
     }
 }
 
 fn close_app(app: &ApplicationWindow, action: &str) {
-    println!("{action}");
     let action = format!("systemctl {}", action);
     let output = core::run_command(&action);
     match output {
         // need to implement proper error handling
-        Ok(result) => println!("{}", result),
+        Ok(result) => debug!("{}", result),
         Err(err) => {
-            println!("{}", err)
+            error!("Error executing command: {}", err)
         }
     }
     app.close();
