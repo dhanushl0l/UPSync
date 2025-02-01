@@ -1,12 +1,10 @@
 use env_logger::{Builder, Env};
-use glib::timeout_add_seconds;
+use glib::{clone, timeout_add_seconds};
 use gtk::prelude::*;
 use gtk::{self, glib, Application, ApplicationWindow, Button, Label, Orientation};
 use log::{debug, error, info, warn};
 use serde_json::to_writer;
-use std::error::Error;
-use std::sync::OnceLock;
-use std::{fs::File, process};
+use std::{env, error::Error, fs::File, process, sync::OnceLock};
 use tokio::{io::AsyncReadExt, net::TcpListener};
 use upsync::core;
 
@@ -33,9 +31,12 @@ fn main() {
     let env = Env::default().filter_or("LOG", "info");
     Builder::from_env(env).init();
 
-    match core::get_args().as_str() {
-        "setup" => setup(),
-        _ => match run_server() {
+    match env::var("ACTION").as_deref() {
+        Ok("setup") => setup(),
+        Ok("gui") => {
+            let a = run_gui(String::from("Click 'Ignore' to cancel."), 30);
+        }
+        Ok(_) | Err(_) => match run_server() {
             Ok(_) => info!("running server"),
             Err(err) => error!("error opening gui {}", err),
         },
@@ -175,29 +176,38 @@ fn popup(app: &Application, defaults: String) {
         .child(&center_container)
         .build();
 
-    let window_ref = window.clone();
-    button_ignore.connect_clicked({
-        let window = window_ref.clone();
-        move |_| close_app(&window, "ignore")
-    });
+    button_ignore.connect_clicked(clone!(
+        #[strong]
+        app,
+        move |_| {
+            close_app(&app, "ignore");
+        }
+    ));
 
-    let window_ref = window.clone();
-    button_sleep.connect_clicked({
-        let window = window_ref.clone();
-        move |_| close_app(&window, "suspend")
-    });
+    button_sleep.connect_clicked(clone!(
+        #[strong]
+        app,
+        move |_| {
+            close_app(&app, "sleep");
+        }
+    ));
 
-    let window_ref = window.clone();
-    button_hibernate.connect_clicked({
-        let window = window_ref.clone();
-        move |_| close_app(&window, "hibernate")
-    });
+    button_hibernate.connect_clicked(clone!(
+        #[strong]
+        app,
+        move |_| {
+            close_app(&app, "hibernate");
+        }
+    ));
 
-    let window_ref = window.clone();
-    button_shutdown.connect_clicked({
-        let window = window_ref.clone();
-        move |_| close_app(&window, "poweroff")
-    });
+    button_shutdown.connect_clicked(clone!(
+        #[strong]
+        app,
+        move |_| {
+            close_app(&app, "shutdown");
+        }
+    ));
+
     window.present()
 }
 
@@ -214,7 +224,7 @@ fn default() {
     }
 }
 
-fn close_app(app: &ApplicationWindow, action: &str) {
+fn close_app(app: &Application, action: &str) {
     let action = format!("systemctl {}", action);
     let output = core::run_command(&action);
     match output {
@@ -224,5 +234,5 @@ fn close_app(app: &ApplicationWindow, action: &str) {
             error!("Error executing command: {}", err)
         }
     }
-    app.close();
+    app.quit();
 }
