@@ -18,8 +18,7 @@ pub mod core {
         pub key: String,
         pub ip: String,
         pub mac_address: String,
-        pub sec: u64,
-        pub default_behaviour: Behaviour,
+        pub default_action_delay: u64,
         pub platform: Platform,
         pub popup: bool,
     }
@@ -42,6 +41,8 @@ pub mod core {
     pub struct ServerConfig {
         pub ip: String,
         pub key: String,
+        pub default_behaviour: Behaviour,
+        pub default_delay: u32,
     }
 
     impl ServerConfig {
@@ -49,6 +50,8 @@ pub mod core {
             ServerConfig {
                 key: get_key("Create a secure key (minimum 8 characters)"),
                 ip: parse_input_string("Enter the port no the server is running (e.g., 9898)"),
+                default_behaviour: parse_input_behaviour("Default behaviour when power is out.\n1 = Sleep\n2 = Hybernate\n3 = Shutdown\n4 = Do nothing \nDefault: 1"),
+                default_delay:parse_input_u32("Enter the time (in seconds) after power loss to put the device to default behaviour: \nDefault: 30"),
             }
         }
     }
@@ -57,12 +60,17 @@ pub mod core {
         pub fn new() -> ClientConfig {
             ClientConfig {
                 key: get_key("Create a secure key (minimum 8 characters)"),
-                ip: parse_input_string("Enter the IP address of your device (e.g., 192.168.66.99:22 or [::1]:22)"),
+                ip: parse_input_string(
+                    "Enter the IP address of your device (e.g., 192.168.66.99:22 or [::1]:22)",
+                ),
                 mac_address: parse_input_string("Enter the MacAddress of your device: "),
-                sec: parse_input_u64("Enter the time (in seconds) after power loss to put the device to sleep: \nDefault: 30"),
-                default_behaviour: parse_input_behaviour("Default behaviour when power is out.\n1 = Sleep\n2 = Hybernate\n3 = Shutdown\n4 = Do nothing \nDefault: 1"),
-                platform: parse_input_platform("What is yout client device platform.\n1 = linux\n2 = Windows"),
-                popup: get_yes_no_input("Do you want to see the popup when power is out? (y/n): \nDefault: y"),
+                default_action_delay: 5,
+                platform: parse_input_platform(
+                    "What is yout client device platform.\n1 = linux\n2 = Windows",
+                ),
+                popup: get_yes_no_input(
+                    "Do you want to see the popup when power is out? (y/n): \nDefault: y",
+                ),
             }
         }
     }
@@ -107,7 +115,7 @@ pub mod core {
         std::process::exit(1);
     }
 
-    fn parse_input_u64(prompt: &str) -> u64 {
+    fn parse_input_u32(prompt: &str) -> u32 {
         let mut attempts: u64 = 0;
 
         while attempts < 3 {
@@ -117,7 +125,7 @@ pub mod core {
                 return 30;
             }
 
-            match input.parse::<u64>() {
+            match input.parse::<u32>() {
                 Ok(x) => return x,
                 Err(_) => {
                     eprintln!(
@@ -230,17 +238,6 @@ pub mod core {
             // Return false on error assuming the client is down.
             Err(_) => Ok(false),
         }
-    }
-
-    pub fn popup_command(data: &ClientConfig) -> String {
-        format!(
-            "export WAYLAND_DISPLAY=wayland-1 && DEFAULT_BEHAVIOUR={:?} && SEC={} &&upsync-gui",
-            data.default_behaviour, data.sec
-        )
-    }
-
-    pub fn no_popup_command(data: &ClientConfig) -> String {
-        format!("systemctl {:?}", data.default_behaviour)
     }
 
     //

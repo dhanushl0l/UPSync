@@ -39,7 +39,6 @@ pub fn run_server() {
         match battery {
             battery::State::Discharging => {
                 warn!("device is discharging.");
-                // Wait for 30 seconds before sending the popup to the client
                 thread::sleep(time::Duration::from_secs(5));
                 state_discharging();
                 continue;
@@ -67,20 +66,20 @@ fn state_discharging() {
     if status() {
         info!("client is online");
 
-        // std::thread::sleep(std::time::Duration::from_secs(get_config().sec));
+        std::thread::sleep(std::time::Duration::from_secs(5));
 
         let battery = match core::battery_present() {
             Ok(state) => state,
             Err(err) => {
                 error!("Unable to read battery status: {}", err);
-                debug!("Returning charging as default");
+                info!("Returning charging as default");
                 battery::State::Charging
             }
         };
 
         match battery {
             battery::State::Discharging => {
-                info!("sending command to client");
+                debug!("Opening popup in client");
                 wait_for_power();
             }
             _ => {
@@ -97,12 +96,7 @@ async fn send_device_to() -> Result<(), Box<dyn Error>> {
     let mut stream = TcpStream::connect(&get_config().ip).await?;
 
     // this was not secure in any means need to implement secure communication
-    let message = format!(
-        "{}|{:?}|{}",
-        get_config().key,
-        get_config().default_behaviour,
-        get_config().sec
-    );
+    let message = format!("{}", get_config().key,);
 
     stream.write_all(message.as_bytes()).await?;
     Ok(())
@@ -121,8 +115,8 @@ fn wait_for_power() {
             Ok(state) => state,
             Err(err) => {
                 error!("Unable to read battery status: {}", err);
-                debug!("Returning charging as default");
-                continue;
+                info!("Returning discharging as default");
+                battery::State::Discharging
             }
         };
 
@@ -171,12 +165,16 @@ fn wake_the_pc() {
                 info!("WOL command succeeded!");
             } else {
                 error!("WOL command failed!");
+                info!(
+                    "Verify the mac address of the client and run '{} setup' to reconfiger to settings",
+                    APPNAME
+                );
             }
         }
         Err(err) => {
             error!("error sending wol {}", err);
-            warn!(
-                "Verify the ip and mac address of the client and run '{} setup'",
+            info!(
+                "Verify the mac address of the client and run '{} setup' to reconfiger to settings",
                 APPNAME
             );
         }

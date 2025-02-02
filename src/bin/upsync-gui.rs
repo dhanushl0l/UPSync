@@ -33,13 +33,21 @@ fn main() {
 
     match env::var("ACTION").as_deref() {
         Ok("setup") => setup(),
-        Ok("gui") => {
-            let a = run_gui(String::from("Click 'Ignore' to cancel."), 30);
-        }
-        Ok(_) | Err(_) => match run_server() {
+        Ok("server") => match run_server() {
             Ok(_) => info!("running server"),
             Err(err) => error!("error opening gui {}", err),
         },
+        Ok(_) => {
+            let label = format!("System will shutdown in 30 seconds");
+            let exit_code: glib::ExitCode = run_gui(label, 30);
+            info!("GUI exited with code: {:?}", exit_code);
+        }
+        Err(_) => {
+            eprintln!("unable to read env");
+            let label = format!("System will shutdown in 30 seconds");
+            let exit_code: glib::ExitCode = run_gui(label, 30);
+            info!("GUI exited with code: {:?}", exit_code);
+        }
     }
 }
 
@@ -80,22 +88,16 @@ async fn run_server() -> Result<(), Box<dyn Error>> {
             match socket.read(&mut buffer).await {
                 Ok(n) => {
                     let received = String::from_utf8_lossy(&buffer[..n]).to_string();
-                    println!("{}", received);
-                    let mut parts = received.splitn(2, '|');
-                    let (key, default, sec) = (
-                        parts.next().unwrap_or(""),
-                        parts.next().unwrap_or(""),
-                        parts.next().unwrap_or(""),
-                    );
 
                     let message = format!(
-                        "The device will automatically {} in {} seconds. Click 'Ignore' to cancel.",
-                        default, sec
+                        "The device will automatically {:?} in {} seconds. Click 'Ignore' to cancel.",
+                        get_config().default_behaviour,
+                        get_config().default_delay,
                     );
-                    let sec = sec.parse().unwrap_or_else(|_| 30);
-                    if key == get_config().key {
+
+                    if received == get_config().key {
                         info!("Valid key received from {}", addr);
-                        run_gui(message, sec);
+                        run_gui(message, get_config().default_delay);
                     } else {
                         warn!("Invalid key received from {}", addr);
                     }
