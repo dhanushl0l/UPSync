@@ -27,7 +27,7 @@ pub fn run_server() {
 
     loop {
         trace!("Main loop!");
-        thread::sleep(time::Duration::from_secs(5));
+        thread::sleep(time::Duration::from_secs(get_config().default_action_delay));
         let battery = match core::battery_present() {
             Ok(state) => state,
             Err(err) => {
@@ -39,7 +39,7 @@ pub fn run_server() {
         match battery {
             battery::State::Discharging => {
                 warn!("device is discharging.");
-                thread::sleep(time::Duration::from_secs(5));
+                thread::sleep(time::Duration::from_secs(get_config().default_action_delay));
                 state_discharging();
                 continue;
             }
@@ -66,7 +66,7 @@ fn state_discharging() {
     if status() {
         info!("client is online");
 
-        std::thread::sleep(std::time::Duration::from_secs(5));
+        thread::sleep(time::Duration::from_secs(get_config().default_action_delay));
 
         let battery = match core::battery_present() {
             Ok(state) => state,
@@ -109,7 +109,7 @@ fn wait_for_power() {
     }
     loop {
         trace!("wait_for_power loop");
-        std::thread::sleep(std::time::Duration::from_secs(5));
+        thread::sleep(time::Duration::from_secs(get_config().default_action_delay));
 
         let battery = match core::battery_present() {
             Ok(state) => state,
@@ -122,11 +122,11 @@ fn wait_for_power() {
 
         match battery {
             battery::State::Discharging => {
-                warn!("device is discharging.");
+                info!("Device is discharging. Waiting for power to return.");
                 continue;
             }
             _ => {
-                info!("device is charging and power is back");
+                info!("Device is charging and power is back");
                 wake_the_pc();
                 break;
             }
@@ -137,7 +137,7 @@ fn wait_for_power() {
 fn offline() {
     loop {
         trace!("Ofline state loop");
-        std::thread::sleep(std::time::Duration::from_secs(5));
+        thread::sleep(time::Duration::from_secs(get_config().default_action_delay));
         match status() {
             true => {
                 info!("client is online");

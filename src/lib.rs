@@ -19,7 +19,6 @@ pub mod core {
         pub ip: String,
         pub mac_address: String,
         pub default_action_delay: u64,
-        pub platform: Platform,
         pub popup: bool,
     }
 
@@ -29,12 +28,6 @@ pub mod core {
         Hybernate,
         Shutdown,
         Ignore,
-    }
-
-    #[derive(Serialize, Deserialize, Debug)]
-    pub enum Platform {
-        Linux,
-        Windows,
     }
 
     #[derive(Serialize, Deserialize, Debug)]
@@ -65,9 +58,6 @@ pub mod core {
                 ),
                 mac_address: parse_input_string("Enter the MacAddress of your device: "),
                 default_action_delay: 5,
-                platform: parse_input_platform(
-                    "What is yout client device platform.\n1 = linux\n2 = Windows",
-                ),
                 popup: get_yes_no_input(
                     "Do you want to see the popup when power is out? (y/n): \nDefault: y",
                 ),
@@ -179,25 +169,6 @@ pub mod core {
                 Ok(4) => return Behaviour::Ignore,
                 _ => {
                     eprintln!("Invalid input. Please enter a choice between 1 and 4.");
-                    attempts += 1;
-                }
-            }
-        }
-        println!("Exceeded maximum attempts.");
-        std::process::exit(1);
-    }
-
-    fn parse_input_platform(prompt: &str) -> Platform {
-        let mut attempts = 0;
-
-        while attempts < 3 {
-            let input = get_input(prompt);
-
-            match input.parse::<u8>() {
-                Ok(1) => return Platform::Linux,
-                Ok(2) => return Platform::Windows,
-                _ => {
-                    eprintln!("Invalid input. Please enter a choice between 1 and 2.");
                     attempts += 1;
                 }
             }

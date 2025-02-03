@@ -31,16 +31,13 @@ fn main() {
     let env = Env::default().filter_or("LOG", "info");
     Builder::from_env(env).init();
 
-    match env::var("ACTION").as_deref() {
-        Ok("setup") => setup(),
+    match env::var("MOD").as_deref() {
         Ok("server") => match run_server() {
             Ok(_) => info!("running server"),
             Err(err) => error!("error opening gui {}", err),
         },
         Ok(_) => {
-            let label = format!("System will shutdown in 30 seconds");
-            let exit_code: glib::ExitCode = run_gui(label, 30);
-            info!("GUI exited with code: {:?}", exit_code);
+            setup();
         }
         Err(_) => {
             eprintln!("unable to read env");
@@ -89,16 +86,15 @@ async fn run_server() -> Result<(), Box<dyn Error>> {
                 Ok(n) => {
                     let received = String::from_utf8_lossy(&buffer[..n]).to_string();
 
-                    let message = format!(
+                    let message: String = format!(
                         "The device will automatically {:?} in {} seconds. Click 'Ignore' to cancel.",
                         get_config().default_behaviour,
                         get_config().default_delay,
                     );
-
                     if received == get_config().key {
                         info!("Valid key received from {}", addr);
                         run_gui(message, get_config().default_delay);
-                    } else {
+                    } else if !received.is_empty() {
                         warn!("Invalid key received from {}", addr);
                     }
                 }
@@ -180,33 +176,33 @@ fn popup(app: &Application, defaults: String) {
 
     button_ignore.connect_clicked(clone!(
         #[strong]
-        app,
+        window,
         move |_| {
-            close_app(&app, "ignore");
+            close_app(&window, "ignore");
         }
     ));
 
     button_sleep.connect_clicked(clone!(
         #[strong]
-        app,
+        window,
         move |_| {
-            close_app(&app, "sleep");
+            close_app(&window, "sleep");
         }
     ));
 
     button_hibernate.connect_clicked(clone!(
         #[strong]
-        app,
+        window,
         move |_| {
-            close_app(&app, "hibernate");
+            close_app(&window, "hibernate");
         }
     ));
 
     button_shutdown.connect_clicked(clone!(
         #[strong]
-        app,
+        window,
         move |_| {
-            close_app(&app, "shutdown");
+            close_app(&window, "shutdown");
         }
     ));
 
@@ -226,7 +222,7 @@ fn default() {
     }
 }
 
-fn close_app(app: &Application, action: &str) {
+fn close_app(app: &ApplicationWindow, action: &str) {
     let action = format!("systemctl {}", action);
     let output = core::run_command(&action);
     match output {
@@ -236,5 +232,5 @@ fn close_app(app: &Application, action: &str) {
             error!("Error executing command: {}", err)
         }
     }
-    app.quit();
+    app.close();
 }
