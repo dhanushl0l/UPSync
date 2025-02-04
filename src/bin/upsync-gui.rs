@@ -36,14 +36,16 @@ fn main() {
             Ok(_) => info!("running server"),
             Err(err) => error!("error opening gui {}", err),
         },
+        Ok("gui") => {
+            let label = format!("System will shutdown in 30 seconds");
+            let exit_code: glib::ExitCode = run_gui(label, 30);
+            info!("GUI exited with code: {:?}", exit_code);
+        }
         Ok(_) => {
             setup();
         }
         Err(_) => {
-            eprintln!("unable to read env");
-            let label = format!("System will shutdown in 30 seconds");
-            let exit_code: glib::ExitCode = run_gui(label, 30);
-            info!("GUI exited with code: {:?}", exit_code);
+            setup();
         }
     }
 }
