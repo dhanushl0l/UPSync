@@ -188,7 +188,7 @@ fn popup(app: &Application, defaults: String) {
         #[strong]
         window,
         move |_| {
-            close_app(&window, "sleep");
+            close_app(&window, "systemctl suspend");
         }
     ));
 
@@ -196,7 +196,7 @@ fn popup(app: &Application, defaults: String) {
         #[strong]
         window,
         move |_| {
-            close_app(&window, "hibernate");
+            close_app(&window, "systemctl hibernate");
         }
     ));
 
@@ -204,7 +204,7 @@ fn popup(app: &Application, defaults: String) {
         #[strong]
         window,
         move |_| {
-            close_app(&window, "shutdown");
+            close_app(&window, "systemctl poweroff");
         }
     ));
 
@@ -212,11 +212,13 @@ fn popup(app: &Application, defaults: String) {
 }
 
 fn default() {
-    let action = format!("systemctl suspend");
-    let output = core::run_command(&action);
+    let output = if env::var("MOD").as_deref() == Ok("server") {
+        core::run_command(&core::get_default(&get_config().default_behaviour))
+    } else {
+        core::run_command("systemctl poweroff")
+    };
 
     match output {
-        // need to implement proper error handling
         Ok(result) => info!("{}", result),
         Err(err) => {
             error!("Error executing command: {}", err)
@@ -225,10 +227,8 @@ fn default() {
 }
 
 fn close_app(app: &ApplicationWindow, action: &str) {
-    let action = format!("systemctl {}", action);
-    let output = core::run_command(&action);
+    let output = core::run_command(action);
     match output {
-        // need to implement proper error handling
         Ok(result) => debug!("{}", result),
         Err(err) => {
             error!("Error executing command: {}", err)

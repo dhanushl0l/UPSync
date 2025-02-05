@@ -211,7 +211,6 @@ pub mod core {
         }
     }
 
-    //
     pub fn connect_to_client() -> Result<String, String> {
         unimplemented!()
     }
@@ -243,6 +242,15 @@ pub mod core {
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
         Ok(input.trim().to_string())
+    }
+
+    pub fn get_default(action: &Behaviour) -> String {
+        match action {
+            Behaviour::Sleep => String::from("systemctl suspend"),
+            Behaviour::Hybernate => String::from("systemctl hibernate"),
+            Behaviour::Shutdown => String::from("systemctl poweroff"),
+            Behaviour::Ignore => String::from(""),
+        }
     }
 
     pub fn run(inputs: String) {
