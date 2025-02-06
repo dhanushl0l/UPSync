@@ -157,26 +157,33 @@ fn wake_the_pc() {
         get_config().mac_address
     );
 
-    let wol = core::run_command(&command);
+    if !status() {
+        info!("Client is ofline");
+        thread::sleep(time::Duration::from_secs(get_config().default_action_delay));
 
-    match wol {
-        Ok(result) => {
-            if result {
-                info!("WOL command succeeded!");
-            } else {
-                error!("WOL command failed!");
-                info!(
+        let wol = core::run_command(&command);
+
+        match wol {
+            Ok(result) => {
+                if result {
+                    info!("WOL command succeeded!");
+                } else {
+                    error!("WOL command failed!");
+                    info!(
                     "Verify the mac address of the client and run '{} setup' to reconfiger to settings",
                     APPNAME
                 );
+                }
             }
-        }
-        Err(err) => {
-            error!("error sending wol {}", err);
-            info!(
+            Err(err) => {
+                error!("error sending wol {}", err);
+                info!(
                 "Verify the mac address of the client and run '{} setup' to reconfiger to settings",
                 APPNAME
             );
+            }
         }
+    } else {
+        info!("Client is online, skipping WOL.");
     }
 }
