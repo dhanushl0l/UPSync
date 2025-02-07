@@ -208,6 +208,10 @@ fn popup(app: &Application, defaults: String) {
         }
     ));
 
+    if env::var("MOD").as_deref() == Ok("server") {
+        window.fullscreen();
+    }
+
     window.present()
 }
 
