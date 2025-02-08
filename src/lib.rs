@@ -17,6 +17,7 @@ pub mod core {
     pub struct ClientConfig {
         pub key: String,
         pub ip: String,
+        pub wake: bool,
         pub mac_address: String,
         pub default_action_delay: u64,
         pub popup: bool,
@@ -41,9 +42,9 @@ pub mod core {
     impl ServerConfig {
         pub fn new() -> ServerConfig {
             ServerConfig {
-                key: get_key("Create a secure key (minimum 8 characters)"),
-                ip: parse_input_string("Enter the port no the server is running (e.g., 9898)"),
-                default_behaviour: parse_input_behaviour("Default behaviour when power is out.\n1 = Sleep\n2 = Hybernate\n3 = Shutdown\n4 = Do nothing \nDefault: 1"),
+                key: get_key("Create a secure key (minimum 8 characters): "),
+                ip: parse_input_string("Enter the port no the server is running (e.g., 9898): ",false),
+                default_behaviour: parse_input_behaviour("Default behaviour when power is out: \n1 = Sleep\n2 = Hybernate\n3 = Shutdown\n4 = Do nothing \nDefault: 1 "),
                 default_delay:parse_input_u32("Enter the time (in seconds) after power loss to put the device to default behaviour: \nDefault: 30"),
             }
         }
@@ -52,15 +53,12 @@ pub mod core {
     impl ClientConfig {
         pub fn new() -> ClientConfig {
             ClientConfig {
-                key: get_key("Create a secure key (minimum 8 characters)"),
-                ip: parse_input_string(
-                    "Enter the IP address of your device (e.g., 192.168.66.99:22 or [::1]:22)",
-                ),
-                mac_address: parse_input_string("Enter the MacAddress of your device: "),
+                key: get_key("Create a secure key (minimum 8 characters): "),
+                ip: parse_input_string("Enter the IP address of your device with the port (e.g., 192.168.66.99:9898): )", false),
+                wake: get_yes_no_input("Do you want to wake the PC automatically when the power is restored using WOL (Wake-on-LAN)? (y/n) [Default: n]: ",false),
+                mac_address: parse_input_string("Enter the MAC address of your device (Leave blank if you did not choose to enable Wake-on-LAN): ",true),                
                 default_action_delay: 5,
-                popup: get_yes_no_input(
-                    "Do you want to see the popup when power is out? (y/n): \nDefault: y",
-                ),
+                popup: get_yes_no_input("Do you want to see the popup when power is out? (y/n): \nDefault: y", true),
             }
         }
     }
@@ -69,7 +67,7 @@ pub mod core {
         let mut attempts = 0;
 
         while attempts < 3 {
-            let prompt = parse_input_string(prompt);
+            let prompt = parse_input_string(prompt, false);
 
             if prompt.len() >= 8 {
                 return prompt;
@@ -87,13 +85,13 @@ pub mod core {
         user_input().expect("Failed to read input")
     }
 
-    fn parse_input_string(prompt: &str) -> String {
+    fn parse_input_string(prompt: &str, act: bool) -> String {
         let mut attempts = 0;
 
         while attempts < 3 {
             let input = get_input(prompt);
 
-            if input.is_empty() {
+            if input.is_empty() && !act {
                 eprintln!("Invalid input.");
                 attempts += 1;
                 continue;
@@ -130,7 +128,7 @@ pub mod core {
         std::process::exit(1);
     }
 
-    fn get_yes_no_input(prompt: &str) -> bool {
+    fn get_yes_no_input(prompt: &str, default: bool) -> bool {
         let mut attempts = 0;
 
         while attempts < 3 {
@@ -138,7 +136,7 @@ pub mod core {
             let input = user_input().unwrap_or_default().trim().to_lowercase();
             match input.as_str() {
                 // Default to "yes" if the user presses Enter
-                "" => return true,
+                "" => return default,
                 "y" => return true,
                 "n" => return false,
                 _ => {

@@ -208,7 +208,7 @@ fn popup(app: &Application, defaults: String) {
         }
     ));
 
-    if env::var("MOD").as_deref() == Ok("server") {
+    if env::var("WINDOW_MOD").as_deref() == Ok("fullscreen") {
         window.fullscreen();
     }
 

@@ -127,7 +127,9 @@ fn wait_for_power() {
             }
             _ => {
                 info!("Device is charging and power is back");
-                wake_the_pc();
+                if get_config().wake {
+                    wake_the_pc();
+                }
                 break;
             }
         }
