@@ -2,110 +2,26 @@ use env_logger::{Builder, Env};
 use glib::{clone, timeout_add_seconds};
 use gtk::prelude::*;
 use gtk::{self, glib, Application, ApplicationWindow, Button, Label, Orientation};
-use log::{debug, error, info, warn};
-use serde_json::to_writer;
-use std::{env, error::Error, fs::File, process, sync::OnceLock};
-use tokio::{io::AsyncReadExt, net::TcpListener};
+use std::env;
 use upsync::core;
 
 const APP_ID: &str = "com.dhanu.upsync";
-
-static CONFIG: OnceLock<core::ServerConfig> = OnceLock::new();
-
-fn get_config() -> &'static core::ServerConfig {
-    // read data from json once to avoide any unxpected errors,
-    CONFIG.get_or_init(|| match core::read_json("Config.json") {
-        Ok(data) => data,
-        Err(err) => {
-            eprintln!(
-                "{} \nPlease run the setup command: {} setup.",
-                err,
-                core::GUI_APPNAME
-            );
-            process::exit(1);
-        }
-    })
-}
 
 fn main() {
     let env = Env::default().filter_or("LOG", "info");
     Builder::from_env(env).init();
 
-    match env::var("MOD").as_deref() {
-        Ok("server") => match run_server() {
-            Ok(_) => info!("running server"),
-            Err(err) => error!("error opening gui {}", err),
-        },
-        Ok("gui") => {
-            let label = format!("System will shutdown in 30 seconds");
-            let exit_code: glib::ExitCode = run_gui(label, 30);
-            info!("GUI exited with code: {:?}", exit_code);
-        }
-        Ok(_) => {
-            setup();
-        }
-        Err(_) => {
-            setup();
-        }
-    }
-}
+    let default_action =
+        core::get_default(&env::var("DEFAULT").unwrap_or_else(|_| "shutdown".to_string()));
 
-fn setup() {
-    println!("Are you sure you want to delete the existing config and start creating a new config? (y/n)");
-    let input = core::user_input().unwrap().to_lowercase();
-    match input.as_str() {
-        "y" => continue_setup(),
-        "n" => process::exit(0),
-        _ => {
-            println!("Please enter a valid option.");
-            process::exit(1);
-        }
-    }
-}
+    let sec = env::var("SEC")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(30);
 
-fn continue_setup() {
-    use core::ServerConfig;
-    let config = ServerConfig::new();
+    let message = format!("System will {} in {} seconds", default_action, sec);
 
-    let file = File::create("Config.json").unwrap();
-    to_writer(file, &config).unwrap();
-}
-
-#[tokio::main]
-async fn run_server() -> Result<(), Box<dyn Error>> {
-    let ip = format!("0.0.0.0:{}", get_config().ip);
-    let listener = TcpListener::bind(&ip).await?;
-    info!("Server started on {}", ip);
-
-    loop {
-        let (mut socket, addr) = listener.accept().await?;
-        debug!("New connection from {}", addr);
-
-        tokio::spawn(async move {
-            let mut buffer = vec![0; 1024];
-
-            match socket.read(&mut buffer).await {
-                Ok(n) => {
-                    let received = String::from_utf8_lossy(&buffer[..n]).to_string();
-
-                    let message: String = format!(
-                        "The device will automatically {:?} in {} seconds. Click 'Ignore' to cancel.",
-                        get_config().default_behaviour,
-                        get_config().default_delay,
-                    );
-                    if received == get_config().key {
-                        info!("Valid key received from {}", addr);
-                        run_gui(message, get_config().default_delay);
-                    } else if !received.is_empty() {
-                        warn!("Invalid key received from {}", addr);
-                    }
-                }
-                Err(e) => {
-                    error!("Error reading from socket: {}", e);
-                }
-            }
-        });
-    }
+    run_gui(message, sec);
 }
 
 fn run_gui(defaults: String, sec: u32) -> glib::ExitCode {
@@ -216,26 +132,22 @@ fn popup(app: &Application, defaults: String) {
 }
 
 fn default() {
-    let output = if env::var("MOD").as_deref() == Ok("server") {
-        core::run_command(&core::get_default(&get_config().default_behaviour))
-    } else {
-        core::run_command("systemctl poweroff")
-    };
+    let default = env::var("DEFAULT").unwrap_or_else(|_| "shutdown".to_string());
+    let command = format!("systemctl {}", core::get_default(&default));
 
-    match output {
-        Ok(result) => info!("{}", result),
+    match core::run_command(&command) {
+        Ok(result) => println!("{}", result),
         Err(err) => {
-            error!("Error executing command: {}", err)
+            eprintln!("Error executing command: {}", err)
         }
     }
 }
 
 fn close_app(app: &ApplicationWindow, action: &str) {
-    let output = core::run_command(action);
-    match output {
-        Ok(result) => debug!("{}", result),
+    match core::run_command(action) {
+        Ok(result) => println!("{}", result),
         Err(err) => {
-            error!("Error executing command: {}", err)
+            eprintln!("Error executing command: {}", err)
         }
     }
     app.close();
