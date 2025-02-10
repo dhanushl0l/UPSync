@@ -3,8 +3,6 @@ use log::{debug, error, info, trace, warn};
 use std::error::Error;
 use std::sync::OnceLock;
 use std::{process, thread, time};
-use tokio::io::AsyncWriteExt;
-use tokio::net::TcpStream;
 
 const APPNAME: &str = "upsync";
 static CONFIG: OnceLock<core::ClientConfig> = OnceLock::new();
@@ -91,22 +89,39 @@ fn state_discharging() {
     }
 }
 
-#[tokio::main]
-async fn send_device_to() -> Result<(), Box<dyn Error>> {
-    let mut stream = TcpStream::connect(&get_config().ip).await?;
+use ssh2::Session;
+use std::io::Read;
+use std::net::TcpStream as TcpStreamSTD;
 
-    // this was not secure in any means need to implement secure communication
-    let message = format!("{}", get_config().key,);
+fn run_ssh() -> Result<(), Box<dyn Error>> {
+    let tcp = TcpStreamSTD::connect("192.168.1.240:22")?;
+    let mut sess = Session::new()?;
+    sess.set_tcp_stream(tcp);
+    sess.handshake().unwrap();
+    sess.userauth_password(&get_config().user, &get_config().key)?;
 
-    stream.write_all(message.as_bytes()).await?;
+    let mut channel = sess.channel_session()?;
+    let command = format!(
+        "export DISPLAY=:0 && export WAYLAND_DISPLAY=wayland-0 && MOD=gui {}",
+        APPNAME
+    );
+    channel.exec(&command)?;
+    channel.exec("")?;
+    let mut s = String::new();
+    channel.read_to_string(&mut s)?;
+    // next add result manager
+    // println!("{}", s);
+    channel.wait_close()?;
+    println!("{}", channel.exit_status()?);
     Ok(())
 }
 
 fn wait_for_power() {
-    match send_device_to() {
+    match run_ssh() {
         Ok(()) => info!("popup open surcess"),
         Err(err) => error!("popup open error: {}", err),
     }
+
     loop {
         trace!("wait_for_power loop");
         thread::sleep(time::Duration::from_secs(get_config().default_action_delay));

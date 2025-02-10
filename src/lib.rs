@@ -39,7 +39,7 @@ pub mod core {
             ClientConfig {
                 user: parse_input_string("Enter the client username: ",false),
                 key: parse_input_string("Enter the user password: ",false),
-                ip: parse_input_string("Enter the IP address of your device with the port (e.g., 192.168.66.99:9898): )", false),
+                ip: parse_input_string("Enter the IP address of your device with the ssh port by default it is 22 (e.g., 192.168.66.99:22): )", false),
                 wake: get_yes_no_input("Do you want to wake the PC automatically when the power is restored using WOL (Wake-on-LAN)? (y/n) [Default: n]: ",false),
                 mac_address: parse_input_string("Enter the MAC address of your device (Leave blank if you did not choose to enable Wake-on-LAN): ",true),   
                 default_delay:parse_input_u32("Enter the time (in seconds) after power loss to put the device to default behaviour: \nDefault: 30"),    
