@@ -4,7 +4,6 @@ use std::error::Error;
 use std::sync::OnceLock;
 use std::{process, thread, time};
 
-const APPNAME: &str = "upsync";
 static CONFIG: OnceLock<core::ClientConfig> = OnceLock::new();
 
 fn get_config() -> &'static core::ClientConfig {
@@ -12,7 +11,11 @@ fn get_config() -> &'static core::ClientConfig {
     CONFIG.get_or_init(|| match core::read_json("config.json") {
         Ok(data) => data,
         Err(err) => {
-            eprintln!("{} \nPlease run the setup command: {} setup.", err, APPNAME);
+            eprintln!(
+                "{} \nPlease run the setup command: {} setup.",
+                err,
+                core::APPNAME
+            );
             process::exit(1);
         }
     })
@@ -78,7 +81,7 @@ fn state_discharging() {
         match battery {
             battery::State::Discharging => {
                 debug!("Opening popup in client");
-                wait_for_power();
+                send_device_to();
             }
             _ => {
                 info!("power is back.");
@@ -89,11 +92,43 @@ fn state_discharging() {
     }
 }
 
+fn send_device_to() {
+    match get_config().popup {
+        true => {
+            let command: String = format!(
+                "export DISPLAY=:0 && export WAYLAND_DISPLAY=wayland-0 && MOD=gui {}",
+                core::GUI_APPNAME
+            );
+            match run_ssh(command) {
+                Ok(()) => info!("popup open surcess"),
+                Err(err) => {
+                    error!("popup open error: {}", err);
+                }
+            }
+        }
+
+        false => {
+            let command = format!(
+                "systemctl {}",
+                core::get_default_server(&get_config().default_behaviour)
+            );
+            match run_ssh(command) {
+                Ok(()) => info!("popup open surcess"),
+                Err(err) => {
+                    error!("popup open error: {}", err);
+                }
+            }
+        }
+    }
+
+    wait_for_power()
+}
+
 use ssh2::Session;
 use std::io::Read;
 use std::net::TcpStream as TcpStreamSTD;
 
-fn run_ssh() -> Result<(), Box<dyn Error>> {
+fn run_ssh(command: String) -> Result<(), Box<dyn Error>> {
     let tcp = TcpStreamSTD::connect("192.168.1.240:22")?;
     let mut sess = Session::new()?;
     sess.set_tcp_stream(tcp);
@@ -101,12 +136,9 @@ fn run_ssh() -> Result<(), Box<dyn Error>> {
     sess.userauth_password(&get_config().user, &get_config().key)?;
 
     let mut channel = sess.channel_session()?;
-    let command = format!(
-        "export DISPLAY=:0 && export WAYLAND_DISPLAY=wayland-0 && MOD=gui {}",
-        APPNAME
-    );
+
     channel.exec(&command)?;
-    channel.exec("")?;
+
     let mut s = String::new();
     channel.read_to_string(&mut s)?;
     // next add result manager
@@ -117,11 +149,6 @@ fn run_ssh() -> Result<(), Box<dyn Error>> {
 }
 
 fn wait_for_power() {
-    match run_ssh() {
-        Ok(()) => info!("popup open surcess"),
-        Err(err) => error!("popup open error: {}", err),
-    }
-
     loop {
         trace!("wait_for_power loop");
         thread::sleep(time::Duration::from_secs(get_config().default_action_delay));
@@ -188,7 +215,7 @@ fn wake_the_pc() {
                     error!("WOL command failed!");
                     info!(
                     "Verify the mac address of the client and run '{} setup' to reconfiger to settings",
-                    APPNAME
+                    core::APPNAME
                 );
                 }
             }
@@ -196,7 +223,7 @@ fn wake_the_pc() {
                 error!("error sending wol {}", err);
                 info!(
                 "Verify the mac address of the client and run '{} setup' to reconfiger to settings",
-                APPNAME
+                core::APPNAME
             );
             }
         }

@@ -20,8 +20,8 @@ pub mod core {
         pub ip: String,
         pub wake: bool,
         pub mac_address: String,
-        default_behaviour: Behaviour,
-        default_delay: u32,
+        pub default_behaviour: Behaviour,
+        pub default_delay: u32,
         pub default_action_delay: u64,
         pub popup: bool,
     }
@@ -29,7 +29,7 @@ pub mod core {
     #[derive(Serialize, Deserialize, Debug)]
     pub enum Behaviour {
         Sleep,
-        Hybernate,
+        Hibernate,
         Shutdown,
         Ignore,
     }
@@ -132,7 +132,7 @@ pub mod core {
 
             match input.parse::<u8>() {
                 Ok(1) => return Behaviour::Sleep,
-                Ok(2) => return Behaviour::Hybernate,
+                Ok(2) => return Behaviour::Hibernate,
                 Ok(3) => return Behaviour::Shutdown,
                 Ok(4) => return Behaviour::Ignore,
                 _ => {
@@ -218,6 +218,15 @@ pub mod core {
             "hybernate" => String::from("hibernate"),
             "shutdown" => String::from("poweroff"),
             _ => String::from(""),
+        }
+    }
+
+    pub fn get_default_server(action: &Behaviour) -> String {
+        match action {
+            Behaviour::Hibernate => "hibernate".to_string(),
+            Behaviour::Shutdown => "poweroff".to_string(),
+            Behaviour::Sleep => "suspend".to_string(),
+            Behaviour::Ignore => String::new(),
         }
     }
 
