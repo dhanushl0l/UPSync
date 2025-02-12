@@ -26,6 +26,65 @@ This tool is not intended for general-purpose use and is only applicable in spec
     Both devices must be connected to the same network.
     Designed for learning and experimental purposes.
 
-Why Rust?
+# 📌 Installation Guide
+
+## Prerequisites
+
+Before proceeding, ensure you have `git` installed. If not, install it using the following command:
+
+### Arch Linux:
+
+```bash
+sudo pacman -S git
+```
+
+### Debian/Ubuntu:
+
+```bash
+sudo apt update && sudo apt install git -y
+```
+
+### Install Rust Build Tools
+
+The project requires Rust and its build tools. Install them using:
+
+```bash
+sudo pacman -S rust
+```
+
+### Debian/Ubuntu:
+
+```bash
+sudo apt update && sudo apt install cargo rustc -y
+```
+
+You are free to remove the build tools after the installation is complete.
+
+### Clone the Repository
+
+Now, clone the repository and navigate into it:
+
+```bash
+git clone https://github.com/dhanushl0l/UPSync.git
+cd UPSync
+```
+
+### Installation Steps
+
+For Server Installation:
+
+```bash
+./install-server.sh
+```
+
+```bash
+./install-client.sh
+```
+
+## Done!
+
+Your setup is complete. If needed, you can further configure the application by editing the `config.config` file and tweaking environment variables. For more details, see the [`documentation`](not-implemented).
+
+### Why Rust?
 
 This application is written in Rust, primarily as a learning project to explore and practice Rust programming as a beginner.
