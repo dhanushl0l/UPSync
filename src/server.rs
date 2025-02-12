@@ -141,11 +141,30 @@ fn run_ssh(command: String) -> Result<(), Box<dyn Error>> {
 
     let mut s = String::new();
     channel.read_to_string(&mut s)?;
-    // next add result manager
-    // println!("{}", s);
+    parse_result(s);
     channel.wait_close()?;
-    println!("{}", channel.exit_status()?);
     Ok(())
+}
+
+fn parse_result(s: String) {
+    let mut parts = s.split("\n");
+
+    let userchoice = parts.next().unwrap_or("");
+    let result = parts.next().unwrap_or("");
+
+    match userchoice {
+        "systemctl suspend" => info!("User chose suspend"),
+        "systemctl hibernate" => info!("User chose hibernate"),
+        "systemctl sleep" => info!("User chose sleep"),
+        "ignore" => info!("User chose ignore"),
+        _ => error!("Something went wrong"),
+    }
+
+    match result {
+        "execution surcess" => info!("Command execution surcess"),
+        "execution failed" => error!("Command execution failed"),
+        _ => error!("Something went wrong"),
+    }
 }
 
 fn wait_for_power() {

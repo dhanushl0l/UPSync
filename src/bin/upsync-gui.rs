@@ -143,9 +143,16 @@ fn default() {
     }
 }
 
-fn close_app(app: &ApplicationWindow, action: &str) {
+fn close_app(app: &ApplicationWindow, mut action: &str) {
+    println!("{}", action);
+
+    if action == "ignore" {
+        action = "echo 'ignore'"
+    }
+
     match core::run_command(action) {
-        Ok(result) => println!("{}", result),
+        Ok(true) => println!("execution surcess"),
+        Ok(false) => println!("execution failed"),
         Err(err) => {
             eprintln!("Error executing command: {}", err)
         }
