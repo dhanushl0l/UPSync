@@ -1,14 +1,20 @@
 use crate::core;
 use log::{debug, error, info, trace, warn};
 use std::error::Error;
+use std::path::PathBuf;
 use std::sync::OnceLock;
-use std::{process, thread, time};
+use std::{env, process, thread, time};
 
 static CONFIG: OnceLock<core::ClientConfig> = OnceLock::new();
 
 fn get_config() -> &'static core::ClientConfig {
+    let home = env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+    let config_path: PathBuf = [home.as_str(), ".local/share/upsync/config.json"]
+        .iter()
+        .collect();
+
     // read data from json once to avoide any unxpected errors,
-    CONFIG.get_or_init(|| match core::read_json("config.json") {
+    CONFIG.get_or_init(|| match core::read_json(config_path.as_path()) {
         Ok(data) => data,
         Err(err) => {
             eprintln!(
@@ -28,7 +34,7 @@ pub fn run_server() {
 
     loop {
         trace!("Main loop!");
-        thread::sleep(time::Duration::from_secs(get_config().default_action_delay));
+        thread::sleep(time::Duration::from_secs(get_config().delay_between_tasks));
         let battery = match core::battery_present() {
             Ok(state) => state,
             Err(err) => {
@@ -40,7 +46,7 @@ pub fn run_server() {
         match battery {
             battery::State::Discharging => {
                 warn!("device is discharging.");
-                thread::sleep(time::Duration::from_secs(get_config().default_action_delay));
+                thread::sleep(time::Duration::from_secs(get_config().delay_between_tasks));
                 state_discharging();
                 continue;
             }
@@ -67,7 +73,7 @@ fn state_discharging() {
     if status() {
         info!("client is online");
 
-        thread::sleep(time::Duration::from_secs(get_config().default_action_delay));
+        thread::sleep(time::Duration::from_secs(get_config().delay_between_tasks));
 
         let battery = match core::battery_present() {
             Ok(state) => state,
@@ -170,7 +176,7 @@ fn parse_result(s: String) {
 fn wait_for_power() {
     loop {
         trace!("wait_for_power loop");
-        thread::sleep(time::Duration::from_secs(get_config().default_action_delay));
+        thread::sleep(time::Duration::from_secs(get_config().delay_between_tasks));
 
         let battery = match core::battery_present() {
             Ok(state) => state,
@@ -200,7 +206,7 @@ fn wait_for_power() {
 fn offline() {
     loop {
         trace!("Ofline state loop");
-        thread::sleep(time::Duration::from_secs(get_config().default_action_delay));
+        thread::sleep(time::Duration::from_secs(get_config().delay_between_tasks));
         match status() {
             true => {
                 info!("client is online");
@@ -222,7 +228,7 @@ fn wake_the_pc() {
 
     if !status() {
         info!("Client is ofline");
-        thread::sleep(time::Duration::from_secs(get_config().default_action_delay));
+        thread::sleep(time::Duration::from_secs(get_config().delay_between_tasks));
 
         let wol = core::run_command(&command);
 

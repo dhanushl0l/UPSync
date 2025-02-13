@@ -22,7 +22,7 @@ pub mod core {
         pub mac_address: String,
         pub default_behaviour: Behaviour,
         pub default_delay: u32,
-        pub default_action_delay: u64,
+        pub delay_between_tasks: u64,
         pub popup: bool,
     }
 
@@ -44,7 +44,7 @@ pub mod core {
                 mac_address: parse_input_string("Enter the MAC address of your device (Leave blank if you did not choose to enable Wake-on-LAN): ",true),   
                 default_delay:parse_input_u32("Enter the time (in seconds) after power loss to put the device to default behaviour: \nDefault: 30"),    
                 default_behaviour: parse_input_behaviour("Default behaviour when power is out: \n1 = Sleep\n2 = Hybernate\n3 = Shutdown\n4 = Do nothing \nDefault: 1 "),         
-                default_action_delay: 5,
+                delay_between_tasks: 5,
                 popup: get_yes_no_input("Do you want to see the popup when power is out? (y/n): \nDefault: y", true),
             }
         }
@@ -198,8 +198,9 @@ pub mod core {
     }
 
     pub fn read_json<T: for<'de> Deserialize<'de>>(
-        path: &str,
+        path: &std::path::Path,
     ) -> Result<T, Box<dyn std::error::Error>> {
+        println!("{}", path.display());
         let data = fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))?;
         let json: T =
             serde_json::from_str(&data).map_err(|e| format!("Failed to parse JSON: {}", e))?;

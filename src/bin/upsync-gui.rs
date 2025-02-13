@@ -70,11 +70,6 @@ fn popup(app: &Application, defaults: String) {
 
     gtk_box.set_size_request(500, 100);
 
-    gtk_box.append(&button_sleep);
-    gtk_box.append(&button_hibernate);
-    gtk_box.append(&button_shutdown);
-    gtk_box.append(&button_ignore);
-
     let center_container = gtk::Box::builder()
         .orientation(Orientation::Vertical)
         .halign(gtk::Align::Center)
@@ -124,7 +119,26 @@ fn popup(app: &Application, defaults: String) {
         }
     ));
 
-    if env::var("WINDOW_MOD").as_deref() == Ok("fullscreen") {
+    gtk_box.append(&button_sleep);
+    gtk_box.append(&button_hibernate);
+    gtk_box.append(&button_shutdown);
+
+    if env::var("REBOOT").as_deref() == Ok("yes") {
+        let button_reboot = Button::builder().label("reboot").build();
+        button_reboot.connect_clicked(clone!(
+            #[strong]
+            window,
+            move |_| {
+                close_app(&window, "reboot");
+            }
+        ));
+        gtk_box.append(&button_reboot);
+        button_reboot.set_size_request(button_width, button_height);
+    }
+
+    gtk_box.append(&button_ignore);
+
+    if env::var("WINDOW_MOD").as_deref() != Ok("yes") {
         window.fullscreen();
     }
 
