@@ -114,12 +114,10 @@ fn send_device_to() {
         }
 
         false => {
-            let command = format!(
-                "systemctl {}",
-                core::get_default_server(&get_config().default_behaviour)
-            );
+            let action = core::get_default_server(&get_config().default_behaviour);
+            let command = format!("systemctl {}", action,);
             match run_ssh(command) {
-                Ok(()) => info!("popup open surcess"),
+                Ok(()) => info!("Device send to {}", action),
                 Err(err) => {
                     error!("popup open error: {}", err);
                 }
@@ -131,7 +129,6 @@ fn send_device_to() {
 }
 
 use ssh2::Session;
-use std::io::Read;
 use std::net::TcpStream as TcpStreamSTD;
 
 fn run_ssh(command: String) -> Result<(), Box<dyn Error>> {
@@ -145,32 +142,7 @@ fn run_ssh(command: String) -> Result<(), Box<dyn Error>> {
 
     channel.exec(&command)?;
 
-    let mut s = String::new();
-    channel.read_to_string(&mut s)?;
-    parse_result(s);
-    channel.wait_close()?;
     Ok(())
-}
-
-fn parse_result(s: String) {
-    let mut parts = s.split("\n");
-
-    let userchoice = parts.next().unwrap_or("");
-    let result = parts.next().unwrap_or("");
-
-    match userchoice {
-        "systemctl suspend" => info!("User chose suspend"),
-        "systemctl hibernate" => info!("User chose hibernate"),
-        "systemctl sleep" => info!("User chose sleep"),
-        "ignore" => info!("User chose ignore"),
-        _ => error!("Something went wrong"),
-    }
-
-    match result {
-        "execution surcess" => info!("Command execution surcess"),
-        "execution failed" => error!("Command execution failed"),
-        _ => error!("Something went wrong"),
-    }
 }
 
 fn wait_for_power() {
@@ -220,11 +192,7 @@ fn offline() {
 }
 
 fn wake_the_pc() {
-    let command = format!(
-        "wakeonlan -i {} {}",
-        get_config().ip,
-        get_config().mac_address
-    );
+    let command = format!("wakeonlan {}", get_config().mac_address);
 
     if !status() {
         info!("Client is ofline");

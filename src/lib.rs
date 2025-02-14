@@ -5,6 +5,7 @@ pub mod core {
     use battery;
     use std::{env, error::Error, fs, io, process};
     use tokio::net::TcpStream;
+    use tokio::time::{timeout, Duration};
     // This enum represents the JSON structure
     use serde::{Deserialize, Serialize};
 
@@ -172,9 +173,11 @@ pub mod core {
 
     #[tokio::main]
     pub async fn device_status(ip: &str) -> Result<bool, Box<dyn Error>> {
-        match TcpStream::connect(ip).await {
-            Ok(_) => Ok(true),
-            // Return false on error assuming the client is down.
+        let timeout_duration = Duration::from_secs(3);
+
+        match timeout(timeout_duration, TcpStream::connect(ip)).await {
+            Ok(Ok(_)) => Ok(true),
+            Ok(Err(_)) => Ok(false),
             Err(_) => Ok(false),
         }
     }
