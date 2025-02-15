@@ -44,18 +44,33 @@ sudo pacman -S git
 sudo apt update && sudo apt install git -y
 ```
 
+### Fedora: "Not tested"
+
+```bash
+sudo dnf install git
+```
+
 ### Install Rust Build Tools
 
 The project requires Rust and its build tools. Install them using:
 
 ```bash
-sudo pacman -S rust
+sudo pacman -Sy rust 
+sudo pacman -Sy gtk4 base-devel
 ```
 
 ### Debian/Ubuntu:
 
 ```bash
 sudo apt update && sudo apt install cargo rustc -y
+sudo apt install libgtk-4-dev build-essential -y
+```
+
+### Fedora: "Not tested"
+
+```bash
+sudo dnf install install cargo rustc -y
+sudo dnf install gtk4-devel gcc
 ```
 
 You are free to remove the build tools after the installation is complete.
@@ -77,8 +92,24 @@ For Server Installation:
 ./install-server.sh
 ```
 
+For client Installation:
+
 ```bash
 ./install-client.sh
+```
+
+### 
+
+If the application is not running or certain features are not working correctly, please check the status of the service by running the following command:
+
+```bash
+systemctl status upsync
+```
+
+restart if nessary by running 
+
+```bash
+systemctl restart upsync
 ```
 
 ## Done!

@@ -17,7 +17,7 @@ fn get_config() -> &'static core::ClientConfig {
     CONFIG.get_or_init(|| match core::read_json(config_path.as_path()) {
         Ok(data) => data,
         Err(err) => {
-            eprintln!(
+            error!(
                 "{} \nPlease run the setup command: {} setup.",
                 err,
                 core::APPNAME

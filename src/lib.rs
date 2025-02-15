@@ -3,6 +3,7 @@ mod setup;
 
 pub mod core {
     use battery;
+    use log::debug;
     use std::{env, error::Error, fs, io, process};
     use tokio::net::TcpStream;
     use tokio::time::{timeout, Duration};
@@ -203,7 +204,7 @@ pub mod core {
     pub fn read_json<T: for<'de> Deserialize<'de>>(
         path: &std::path::Path,
     ) -> Result<T, Box<dyn std::error::Error>> {
-        println!("{}", path.display());
+        debug!("{}", path.display());
         let data = fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))?;
         let json: T =
             serde_json::from_str(&data).map_err(|e| format!("Failed to parse JSON: {}", e))?;
