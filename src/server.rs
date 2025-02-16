@@ -32,6 +32,8 @@ pub fn run_server() {
         offline();
     }
 
+    let mut log = true;
+
     loop {
         trace!("Main loop!");
         thread::sleep(time::Duration::from_secs(get_config().delay_between_tasks));
@@ -46,12 +48,17 @@ pub fn run_server() {
         match battery {
             battery::State::Discharging => {
                 warn!("device is discharging.");
+                log = true;
                 thread::sleep(time::Duration::from_secs(get_config().delay_between_tasks));
                 state_discharging();
                 continue;
             }
-            _ => {
-                info!("Device is charging");
+            other => {
+                debug!("Device is charging: {:?}", other);
+                if log {
+                    info!("Device is charging");
+                    log = false
+                }
                 continue;
             }
         }
@@ -146,6 +153,7 @@ fn run_ssh(command: String) -> Result<(), Box<dyn Error>> {
 }
 
 fn wait_for_power() {
+    info!("Device is discharging. Waiting for power to return.");
     loop {
         trace!("wait_for_power loop");
         thread::sleep(time::Duration::from_secs(get_config().delay_between_tasks));
@@ -161,7 +169,7 @@ fn wait_for_power() {
 
         match battery {
             battery::State::Discharging => {
-                info!("Device is discharging. Waiting for power to return.");
+                debug!("Device is discharging");
                 continue;
             }
             _ => {
@@ -176,14 +184,13 @@ fn wait_for_power() {
 }
 
 fn offline() {
+    info!("client is online");
     loop {
-        trace!("Ofline state loop");
+        trace!("Offline state loop");
         thread::sleep(time::Duration::from_secs(get_config().delay_between_tasks));
         match status() {
-            true => {
-                info!("client is online");
-                break;
-            }
+            true => break,
+
             false => {
                 info!("client is offline")
             }
@@ -195,8 +202,11 @@ fn wake_the_pc() {
     let command = format!("wakeonlan {}", get_config().mac_address);
 
     if !status() {
-        info!("Client is ofline");
-        thread::sleep(time::Duration::from_secs(get_config().delay_between_tasks));
+        info!(
+            "Client is offline sending wol command in {} seconds",
+            get_config().default_delay as u64
+        );
+        thread::sleep(time::Duration::from_secs(get_config().default_delay as u64));
 
         let wol = core::run_command(&command);
 
